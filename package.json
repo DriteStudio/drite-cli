@@ -1,0 +1,17 @@
+{
+  "name": "@drite/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "drite": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "check": "bun build src/index.ts --outdir .check",
+    "build": "bun build src/index.ts --compile --outfile dist/drite"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  }
+}
