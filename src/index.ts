@@ -5,6 +5,8 @@ import { basename, dirname, join } from "node:path";
 import { homedir, platform } from "node:os";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
+import { handleVpsPlansCommand } from "./commands/vpsPlans";
+import { getVpsPlanChoiceHint, isVpsPlanOrderable } from "./vps/availability";
 
 const DEFAULT_BASE_URL = "https://dritestudio.co.th";
 const API_PREFIX = "/api/auth";
@@ -509,7 +511,15 @@ async function handleVps(args: ParsedArgs, action: string | undefined) {
     case "list":
       return apiRequest(args, { path: "/vps", query: parseQuery(args) });
     case "plans":
-      return apiRequest(args, { path: "/vps/plans" });
+      return handleVpsPlansCommand({
+        args,
+        compact: boolFlag(args, "compact"),
+        query: parseQuery(args),
+        templateId: flag(args, "template-id"),
+        availableOnly: boolFlag(args, "available-only"),
+        requestJson,
+        printOutput
+      });
     case "templates":
       return apiRequest(args, { path: "/vps/templates" });
     case "available-ips":
@@ -828,6 +838,8 @@ Examples:
   drite me
   drite doctor
   drite vps start <id> --wait
+  drite vps plans --template-id <template_id>
+  drite vps plans --available-only
   drite vps watch <id>
   drite vps renew <id> --duration monthly
   drite vps upgrade-options <id>
@@ -975,18 +987,8 @@ async function selectHosting(rl: ReturnType<typeof createInterface>) {
 }
 
 async function interactiveVpsCreate(rl: ReturnType<typeof createInterface>) {
-  const [plansData, templatesData] = await Promise.all([
-    fetchInteractive({ path: "/vps/plans" }),
-    fetchInteractive({ path: "/vps/templates" })
-  ]);
-  if (!plansData || !templatesData) return;
-
-  const plan = await select(rl, "Select VPS plan", getPayloadList(plansData, "data").map(plan => ({
-    label: `${plan.name} (${plan.cpu} CPU, ${plan.ram}GB RAM, ${plan.disk}GB disk)`,
-    hint: `daily ${plan.dailyPrice}, monthly ${plan.monthlyPrice}`,
-    value: plan
-  })));
-  if (!plan) return;
+  const templatesData = await fetchInteractive({ path: "/vps/templates" });
+  if (!templatesData) return;
 
   const template = await select(rl, "Select template", getPayloadList(templatesData, "data").map(template => ({
     label: formatTemplateLabel(template),
@@ -994,6 +996,23 @@ async function interactiveVpsCreate(rl: ReturnType<typeof createInterface>) {
     value: template
   })));
   if (!template) return;
+
+  const plansData = await fetchInteractive({ path: "/vps/plans", query: { templateId: template.id } });
+  if (!plansData) return;
+
+  const availablePlans = getPayloadList(plansData, "data").filter(plan => isVpsPlanOrderable(plan));
+  if (availablePlans.length === 0) {
+    console.log("No VPS plan is currently available for this template.");
+    printOutput(plansData, false);
+    return;
+  }
+
+  const plan = await select(rl, "Select VPS plan", availablePlans.map(plan => ({
+    label: `${plan.name} (${plan.cpu} CPU, ${plan.ram}GB RAM, ${plan.disk}GB disk)`,
+    hint: getVpsPlanChoiceHint(plan),
+    value: plan
+  })));
+  if (!plan) return;
 
   const duration = await select(rl, "Select duration", pricedDurationChoices(plan));
   if (!duration) return;

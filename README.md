@@ -2,6 +2,8 @@
 
 Command line client for the Drite Studio customer API.
 
+Full API documentation: [Docs.md](./Docs.md)
+
 ## Setup
 
 ```powershell
@@ -31,6 +33,8 @@ bun run src/index.ts
 ```powershell
 bun run src/index.ts me
 bun run src/index.ts vps list
+bun run src/index.ts vps plans --template-id <template_id>
+bun run src/index.ts vps plans --available-only
 bun run src/index.ts vps stats <vps_id>
 bun run src/index.ts vps start <vps_id>
 bun run src/index.ts vps rename <vps_id> --name "Production VPS"
