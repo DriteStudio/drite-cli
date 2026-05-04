@@ -1,5 +1,7 @@
 # Drite CLI
 
+### เปิดรับ issue + pull req ถ้าของท่านเจ๋งจริง
+
 Command line client for the Drite Studio customer API.
 
 Full API documentation: [Docs.md](./Docs.md)
