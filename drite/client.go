@@ -38,14 +38,13 @@ type Client struct {
 	userAgent       string
 	maxResponseSize int64
 
-	Account    *AccountService
-	VPS        *VPSService
-	Hosting    *HostingService
-	Billing    *BillingService
-	Tickets    *TicketService
-	Containers *ContainerService
-	Reseller   *ResellerService
-	Public     *PublicService
+	Account  *AccountService
+	VPS      *VPSService
+	Hosting  *HostingService
+	Billing  *BillingService
+	Tickets  *TicketService
+	Reseller *ResellerService
+	Public   *PublicService
 }
 
 type Option func(*Client) error
@@ -134,7 +133,6 @@ func NewClient(token string, options ...Option) (*Client, error) {
 	client.Hosting = &HostingService{client: client}
 	client.Billing = &BillingService{client: client}
 	client.Tickets = &TicketService{client: client}
-	client.Containers = &ContainerService{client: client}
 	client.Reseller = &ResellerService{client: client}
 	client.Public = &PublicService{client: client}
 	return client, nil

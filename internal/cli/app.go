@@ -279,8 +279,6 @@ func (app *App) execute(
 		return runBilling(ctx, client, rest)
 	case "ticket", "tickets":
 		return runTickets(ctx, client, rest)
-	case "container", "containers":
-		return runContainers(ctx, client, rest)
 	case "reseller":
 		return runReseller(ctx, client, rest)
 	case "public":
@@ -336,7 +334,7 @@ Global flags:
 
 Commands:
   auth, config, me, account, vps, hosting, billing, ticket
-  container, reseller, public, request, version
+  reseller, public, request, version
 
 Mutation commands accept --data JSON or --data-file PATH.
 See Docs.md for every action and Go SDK examples.`)

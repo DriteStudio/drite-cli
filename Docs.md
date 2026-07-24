@@ -252,29 +252,6 @@ drite ticket upload .\debug.log
 
 ข้อจำกัด: TXT, LOG, `image/*`, สูงสุด 5 ไฟล์ต่อข้อความและ 10 MiB ต่อไฟล์
 
-## Container API
-
-| กลุ่ม | Go functions | CLI actions |
-| --- | --- | --- |
-| Plans | `Containers.Plans` | `container plans` |
-| Registry templates | `Containers.RegistryTemplates` | `container registry-templates` |
-| Registries | `Registries`, `CreateRegistry`, `DeleteRegistry` | `registries`, `registry-create`, `registry-delete` |
-| Apps | `Apps`, `App`, `CreateApp`, `UpdateApp` | `apps`, `get`, `create`, `update` |
-| Runtime actions | `Action` | `deploy`, `start`, `stop`, `restart`, `delete` |
-| Billing | `SetAutoRenewal`, `Renew` | `auto-renewal`, `renew` |
-| Observability | `Operations`, `Runtime`, `Logs` | `operations`, `runtime`, `logs` |
-| Environment | `Environment`, `SetEnvironmentVariable`, `DeleteEnvironmentVariable` | `env`, `env-set`, `env-delete` |
-| Registry link | `AttachRegistry`, `DetachRegistry` | `registry-attach`, `registry-detach` |
-| Domains | `AddDomain`, `VerifyDomain`, `DeleteDomain` | `domain-add`, `domain-verify`, `domain-delete` |
-
-ตัวอย่าง:
-
-```powershell
-drite container create --data-file .\container.json
-drite container logs <app_id> --tail 500 --since 3600
-drite container env-set <app_id> API_KEY --data '{"value":"secret"}'
-```
-
 ## Reseller API
 
 ใช้ได้เฉพาะ API key ของบัญชี reseller:

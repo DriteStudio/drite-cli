@@ -6,7 +6,7 @@ API token created on the Drite Studio website.
 This repository contains:
 
 - `drite`: an importable Go SDK, split into Account, VPS, Hosting, Billing,
-  Tickets, Containers, Reseller, and Public services.
+  Tickets, Reseller, and Public services.
 - `cmd/drite`: a script-friendly command line client.
 - [docs/API.md](./docs/API.md): customer-facing HTTP API documentation with
   authentication, request bodies, errors, limits, and `curl` examples.
@@ -58,7 +58,6 @@ drite vps start <vps_id>
 drite hosting list
 drite billing transactions --page 1 --limit 20
 drite ticket list --status open
-drite container apps
 ```
 
 Mutation payloads use JSON:

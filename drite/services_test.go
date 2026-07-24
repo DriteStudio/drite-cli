@@ -2,7 +2,6 @@ package drite
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -15,14 +14,10 @@ func TestServiceRoutes(t *testing.T) {
 	type requestSeen struct {
 		method string
 		path   string
-		body   map[string]any
 	}
 	var seen []requestSeen
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		entry := requestSeen{method: request.Method, path: request.URL.EscapedPath()}
-		if strings.Contains(request.Header.Get("Content-Type"), "application/json") {
-			json.NewDecoder(request.Body).Decode(&entry.body)
-		}
 		seen = append(seen, entry)
 		writer.Header().Set("Content-Type", "application/json")
 		io.WriteString(writer, `{"success":true}`)
@@ -46,10 +41,6 @@ func TestServiceRoutes(t *testing.T) {
 			return err
 		},
 		func() error {
-			_, err := client.Containers.SetEnvironmentVariable(ctx, "app-1", "API_KEY", "secret")
-			return err
-		},
-		func() error {
 			_, err := client.Reseller.CreateVPS(ctx, CreateVPSRequest{Name: "customer-vps"})
 			return err
 		},
@@ -64,7 +55,6 @@ func TestServiceRoutes(t *testing.T) {
 		{method: "POST", path: "/api/auth/hosting/verify-domain"},
 		{method: "POST", path: "/api/auth/billing/due-items/pay"},
 		{method: "POST", path: "/api/auth/ticket/ticket-1/reply"},
-		{method: "PUT", path: "/api/auth/containers/apps/app-1/env/API_KEY"},
 		{method: "POST", path: "/api/reseller/vps"},
 	}
 	if len(seen) != len(expected) {
@@ -74,9 +64,6 @@ func TestServiceRoutes(t *testing.T) {
 		if seen[index].method != expected[index].method || seen[index].path != expected[index].path {
 			t.Errorf("request %d = %s %s", index, seen[index].method, seen[index].path)
 		}
-	}
-	if seen[4].body["value"] != "secret" {
-		t.Fatalf("environment body = %#v", seen[4].body)
 	}
 }
 

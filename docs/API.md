@@ -41,7 +41,7 @@ Content-Type: application/json
 ## สิทธิ์และข้อกำหนดของบัญชี
 
 - `/api/auth/*` ใช้สิทธิ์ของเจ้าของ token เท่านั้น
-- บัญชีต้องยืนยันอีเมลก่อนใช้ VPS, Hosting, Billing, Ticket และ Container
+- บัญชีต้องยืนยันอีเมลก่อนใช้ VPS, Hosting, Billing และ Ticket
 - บัญชีที่ถูกล็อกยังอ่านข้อมูลที่อนุญาตได้ แต่ write request จะถูกปฏิเสธ
 - IP allowlist รองรับเฉพาะ IPv4/IPv6 แบบตรงตัว ไม่รองรับ CIDR
 - `/api/reseller/*` ต้องใช้ token ของบัญชี role `reseller`
@@ -403,100 +403,6 @@ curl -X POST "https://dritestudio.co.th/api/auth/ticket/upload-url" \
 ลูกค้าไม่มี endpoint สำหรับปิด Ticket การเรียก
 `PUT /api/auth/ticket/{ticketId}/close` จะตอบ `403 STAFF_CLOSE_REQUIRED`
 
-## Container
-
-ทุก path ในส่วนนี้ขึ้นต้นด้วย `/api/auth/containers`
-
-### Registry
-
-| Method | Path |
-| --- | --- |
-| `GET` | `/plans` |
-| `GET` | `/registry-templates` |
-| `GET` | `/registries` |
-| `POST` | `/registries` |
-| `DELETE` | `/registries/{registryId}` |
-
-สร้าง Registry:
-
-```json
-{
-  "templateId": "template_id",
-  "name": "GitHub Container Registry",
-  "registryUrl": "https://ghcr.io",
-  "username": "customer",
-  "secret": "registry-token",
-  "authType": "token",
-  "isDefault": false
-}
-```
-
-`authType` รองรับ `basic`, `token`, `anonymous`
-
-### Container application
-
-| Method | Path | รายละเอียด |
-| --- | --- | --- |
-| `GET` | `/apps` | รายการ App |
-| `GET` | `/apps/{appId}` | รายละเอียด |
-| `POST` | `/apps` | สร้าง App |
-| `PATCH` | `/apps/{appId}` | แก้ App |
-| `POST` | `/apps/{appId}/deploy` | Deploy |
-| `POST` | `/apps/{appId}/start` | Start |
-| `POST` | `/apps/{appId}/stop` | Stop |
-| `POST` | `/apps/{appId}/restart` | Restart |
-| `POST` | `/apps/{appId}/delete` | ทำเครื่องหมายลบ |
-| `PATCH` | `/apps/{appId}/auto-renewal` | Body: `{"enabled":true}` |
-| `POST` | `/apps/{appId}/renew` | Body: `{"durationType":"monthly"}` |
-| `GET` | `/apps/{appId}/operations` | Operation ล่าสุด |
-| `GET` | `/apps/{appId}/runtime` | Runtime state |
-| `GET` | `/apps/{appId}/logs` | Query: `pod`, `tailLines`, `sinceSeconds` |
-
-สร้าง App:
-
-```json
-{
-  "name": "customer-api",
-  "image": "ghcr.io/customer/api:latest",
-  "containerPort": 3000,
-  "replicas": 1,
-  "runAsNonRoot": true,
-  "runAsUser": 1000,
-  "runAsGroup": 1000,
-  "fsGroup": 1000,
-  "planId": "plan_id",
-  "durationType": "monthly",
-  "region": "th-bkk",
-  "registryId": "registry_id"
-}
-```
-
-`containerPort` ต้องอยู่ระหว่าง 1-65535, `replicas` อยู่ระหว่าง 1-20 และยังต้อง
-ไม่เกินจำนวนที่ plan รองรับ
-
-Environment variables:
-
-| Method | Path | Body |
-| --- | --- | --- |
-| `GET` | `/apps/{appId}/env` | - |
-| `PUT` | `/apps/{appId}/env/{KEY}` | `{"value":"secret"}` |
-| `DELETE` | `/apps/{appId}/env/{KEY}` | - |
-
-ชื่อ environment variable ต้องตรงรูปแบบ `[A-Z_][A-Z0-9_]*`
-
-Registry link และ Domain:
-
-| Method | Path | Body |
-| --- | --- | --- |
-| `POST` | `/apps/{appId}/registries/{registryId}` | - |
-| `DELETE` | `/apps/{appId}/registries/{registryId}` | - |
-| `POST` | `/apps/{appId}/domains` | `{"hostname":"api.example.com"}` |
-| `POST` | `/apps/{appId}/domains/{domainId}/verify` | - |
-| `DELETE` | `/apps/{appId}/domains/{domainId}` | - |
-
-หลาย operation ตอบ `202` พร้อม `operationId` ให้ติดตามผ่าน
-`GET /apps/{appId}/operations`
-
 ## Reseller VPS API
 
 ต้องใช้ token ของบัญชี role `reseller` เท่านั้น:
@@ -572,7 +478,6 @@ drite me
 drite vps list
 drite hosting list
 drite ticket list --status open
-drite container apps
 ```
 
 ดูคำสั่งและตัวอย่างทั้งหมดได้จาก [README](../README.md) และ
