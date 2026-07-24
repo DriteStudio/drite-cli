@@ -1,64 +1,136 @@
-# Drite CLI
+# Drite CLI and Go SDK
 
-### เปิดรับ issue + pull req ถ้าของท่านเจ๋งจริง
+Go client for the Drite Studio customer API. Customers use the `dr_live_...`
+API token created on the Drite Studio website.
 
-Command line client for the Drite Studio customer API.
+This repository contains:
 
-Full API documentation: [Docs.md](./Docs.md)
+- `drite`: an importable Go SDK, split into Account, VPS, Hosting, Billing,
+  Tickets, Containers, Reseller, and Public services.
+- `cmd/drite`: a script-friendly command line client.
+- [docs/API.md](./docs/API.md): customer-facing HTTP API documentation with
+  authentication, request bodies, errors, limits, and `curl` examples.
+- [Docs.md](./Docs.md): endpoint-to-function coverage and request examples.
 
-## Setup
+## Install the CLI
 
-```powershell
-bun run src/index.ts auth login --token <dr_live_token>
+```bash
+go install github.com/DriteStudio/drite-cli/cmd/drite@latest
 ```
 
-The token is stored outside this repository in your user config directory. You can also skip login and use `DRITE_API_KEY`.
+Or build the current source:
 
-```powershell
-$env:DRITE_API_KEY="<dr_live_token>"
+```bash
+go build -trimpath -o dist/drite ./cmd/drite
 ```
 
-Default API base URL is `https://dritestudio.co.th`.
+On Windows:
 
 ```powershell
-bun run src/index.ts config set-url https://dritestudio.co.th
+go build -trimpath -o dist/drite.exe ./cmd/drite
 ```
 
-## Examples
+## Authenticate
 
-Open the interactive menu:
+Save the API token in the current user's config directory:
 
 ```powershell
-bun run src/index.ts
+drite auth login --token dr_live_xxx
+drite auth status
 ```
 
+For CI/CD, avoid writing a config file:
+
 ```powershell
-bun run src/index.ts me
-bun run src/index.ts vps list
-bun run src/index.ts vps plans --template-id <template_id>
-bun run src/index.ts vps plans --available-only
-bun run src/index.ts vps stats <vps_id>
-bun run src/index.ts vps start <vps_id>
-bun run src/index.ts vps rename <vps_id> --name "Production VPS"
-bun run src/index.ts hosting plans
-bun run src/index.ts hosting list
-bun run src/index.ts billing transactions --page 1 --limit 20
-bun run src/index.ts ticket list --status open
-bun run src/index.ts webhook list
+$env:DRITE_API_KEY = "dr_live_xxx"
+$env:DRITE_API_URL = "https://dritestudio.co.th"
 ```
 
-For full API coverage, use `raw`.
+The CLI never prints the token in `auth status`.
+
+## CLI examples
 
 ```powershell
-bun run src/index.ts raw GET /api/auth/me
-bun run src/index.ts raw POST /api/auth/vps/<vps_id>/renew --json-file .\renew.json
-bun run src/index.ts raw GET /api/auth/hosting/check-domain --query domain=example.com
+drite me
+drite vps list
+drite vps get <vps_id>
+drite vps start <vps_id>
+drite hosting list
+drite billing transactions --page 1 --limit 20
+drite ticket list --status open
+drite container apps
 ```
 
-On PowerShell, prefer `--json-file` or `--json @path\to\body.json` for raw JSON payloads because inline quote escaping is easy to get wrong.
-
-## Build
+Mutation payloads use JSON:
 
 ```powershell
-bun run build
+drite vps rename <vps_id> --data '{"name":"production"}'
+drite vps create --data-file .\create-vps.json
+drite ticket create --data-file .\ticket.json
+```
+
+Upload a ticket attachment, then put the returned `key` into the ticket body:
+
+```powershell
+drite ticket upload .\debug.log
+```
+
+Ticket files are restricted to TXT, LOG, and `image/*`, up to 10 MiB each and
+five files per message.
+
+## Go SDK example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/DriteStudio/drite-cli/drite"
+)
+
+func main() {
+	client, err := drite.NewClient(os.Getenv("DRITE_API_KEY"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	response, err := client.VPS.List(context.Background(), drite.VPSListOptions{
+		Take: 20,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var payload map[string]any
+	if err := response.Decode(&payload); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(payload)
+}
+```
+
+The SDK retains response bodies as JSON so new backend fields do not break
+older customer applications. Stable request payloads use typed Go structs.
+
+## Security
+
+- The default authentication header is `Authorization: Bearer <token>`.
+- `drite.WithAPIKeyHeader()` uses `X-API-Key` when required.
+- Absolute request URLs are rejected so a token cannot accidentally be sent to
+  another host.
+- Public API calls never attach the customer token.
+- Configure exact allowed IP addresses on the website or through
+  `Account.SetAPIKeySecurity`; the backend does not support CIDR entries.
+
+## Development
+
+```bash
+gofmt -w cmd drite internal
+go test ./...
+go vet ./...
+go build ./cmd/drite
 ```

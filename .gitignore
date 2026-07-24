@@ -1,5 +1,8 @@
 dist/
 dist-check/
 .check/
+.coverage/
+coverage.out
+/drite.exe
 .env
 .env.local
