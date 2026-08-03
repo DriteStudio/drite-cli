@@ -250,6 +250,8 @@ VPS อยู่ในสถานะทำงาน
 | `POST` | `/api/auth/hosting/{hostingId}/renew` | ต่ออายุ |
 | `GET` | `/api/auth/hosting/{hostingId}/activation-status` | สถานะเปิดใช้งาน |
 | `GET` | `/api/auth/hosting/{hostingId}/activity` | Activity |
+| `GET` | `/api/auth/hosting/{hostingId}/upgrade-options` | แผนที่อัปเกรดได้และราคาส่วนต่าง |
+| `POST` | `/api/auth/hosting/{hostingId}/upgrade` | ส่งคำขออัปเกรดเข้าคิว |
 | `POST` | `/api/auth/hosting/{hostingId}/autorenew` | สลับเปิด/ปิด Auto-renew |
 | `GET` | `/api/auth/hosting/{hostingId}/stats` | สถิติรวม |
 | `GET` | `/api/auth/hosting/{hostingId}/disk` | Disk usage |
@@ -279,6 +281,19 @@ VPS อยู่ในสถานะทำงาน
 ```
 
 `duration` เป็นจำนวนวัน: `1`, `7`, `30` หรือ `365`
+
+อัปเกรด Hosting:
+
+```json
+{
+  "planId": "plan_id"
+}
+```
+
+เรียก `GET /api/auth/hosting/{hostingId}/upgrade-options` ก่อนเพื่อรับรายการแผนและ
+ราคาส่วนต่างที่ server คำนวณตามวันคงเหลือ จากนั้นส่ง body ข้างต้นไปยัง
+`POST /api/auth/hosting/{hostingId}/upgrade` เมื่อรับงานสำเร็จ endpoint จะตอบ `202`
+พร้อม `jobId` โดยวันต่ออายุและรอบบิลเดิมไม่เปลี่ยน
 
 รหัสผ่าน Hosting ต้องยาว 10-128 ตัว, ห้ามขึ้นต้นด้วยตัวเลข และต้องมีตัวพิมพ์ใหญ่
 ตัวพิมพ์เล็ก ตัวเลข และอักขระพิเศษ

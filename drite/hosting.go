@@ -23,6 +23,10 @@ type DeployHostingRequest struct {
 	DomainVerificationToken string `json:"domainVerificationToken,omitempty"`
 }
 
+type UpgradeHostingRequest struct {
+	PlanID string `json:"planId"`
+}
+
 func (s *HostingService) Plans(ctx context.Context) (*Response, error) {
 	return s.client.PublicRequest(ctx, http.MethodGet, "/api/un_auth/hosting/plans", nil)
 }
@@ -84,6 +88,18 @@ func (s *HostingService) ActivationStatus(ctx context.Context, hostingID string)
 
 func (s *HostingService) Activity(ctx context.Context, hostingID string) (*Response, error) {
 	return s.getAction(ctx, hostingID, "activity")
+}
+
+func (s *HostingService) UpgradeOptions(ctx context.Context, hostingID string) (*Response, error) {
+	return s.getAction(ctx, hostingID, "upgrade-options")
+}
+
+func (s *HostingService) Upgrade(
+	ctx context.Context,
+	hostingID string,
+	request UpgradeHostingRequest,
+) (*Response, error) {
+	return s.postAction(ctx, hostingID, "upgrade", request)
 }
 
 // ToggleAutoRenewal mirrors the backend toggle endpoint. Read Hosting.Get

@@ -45,6 +45,7 @@ func runHosting(
 	if err != nil {
 		return nil, err
 	}
+	bodyArgs := rest[1:]
 	switch action {
 	case "get":
 		return client.Hosting.Get(ctx, id)
@@ -60,6 +61,14 @@ func runHosting(
 		return client.Hosting.ActivationStatus(ctx, id)
 	case "activity":
 		return client.Hosting.Activity(ctx, id)
+	case "upgrade-options":
+		return client.Hosting.UpgradeOptions(ctx, id)
+	case "upgrade":
+		body, err := bodyFromArgs[drite.UpgradeHostingRequest]("hosting upgrade", bodyArgs, true)
+		if err != nil {
+			return nil, err
+		}
+		return client.Hosting.Upgrade(ctx, id, body)
 	case "toggle-auto-renewal":
 		return client.Hosting.ToggleAutoRenewal(ctx, id)
 	case "stats":

@@ -2,12 +2,77 @@ package drite
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+func TestHostingUpgradeOptionsRoute(t *testing.T) {
+	t.Parallel()
+	var method, path string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		method = request.Method
+		path = request.URL.EscapedPath()
+		writer.Header().Set("Content-Type", "application/json")
+		io.WriteString(writer, `{"data":{"options":[]}}`)
+	}))
+	defer server.Close()
+
+	client, err := NewClient("token", WithBaseURL(server.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Hosting.UpgradeOptions(context.Background(), "hosting /1"); err != nil {
+		t.Fatal(err)
+	}
+	if method != http.MethodGet || path != "/api/auth/hosting/hosting%20%2F1/upgrade-options" {
+		t.Fatalf("request = %s %s", method, path)
+	}
+}
+
+func TestHostingUpgradeRouteAndBody(t *testing.T) {
+	t.Parallel()
+	var method, path, contentType string
+	var body map[string]string
+	var handlerErr error
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		method = request.Method
+		path = request.URL.EscapedPath()
+		contentType = request.Header.Get("Content-Type")
+		handlerErr = json.NewDecoder(request.Body).Decode(&body)
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusAccepted)
+		io.WriteString(writer, `{"jobId":"job-1"}`)
+	}))
+	defer server.Close()
+
+	client, err := NewClient("token", WithBaseURL(server.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Hosting.Upgrade(
+		context.Background(),
+		"hosting-1",
+		UpgradeHostingRequest{PlanID: "plan-2"},
+	); err != nil {
+		t.Fatal(err)
+	}
+	if handlerErr != nil {
+		t.Fatal(handlerErr)
+	}
+	if method != http.MethodPost || path != "/api/auth/hosting/hosting-1/upgrade" {
+		t.Fatalf("request = %s %s", method, path)
+	}
+	if contentType != "application/json" {
+		t.Fatalf("content type = %q", contentType)
+	}
+	if len(body) != 1 || body["planId"] != "plan-2" {
+		t.Fatalf("body = %#v", body)
+	}
+}
 
 func TestServiceRoutes(t *testing.T) {
 	t.Parallel()

@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,149 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestHostingUpgradeOptionsCommand(t *testing.T) {
+	setConfigHome(t)
+	var method, path, authorization string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		method = request.Method
+		path = request.URL.EscapedPath()
+		authorization = request.Header.Get("Authorization")
+		writer.Header().Set("Content-Type", "application/json")
+		io.WriteString(writer, `{"data":{"options":[]}}`)
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	app := NewApp(strings.NewReader(""), &stdout, &stderr)
+	code := app.Run(context.Background(), []string{
+		"--token", "token",
+		"--base-url", server.URL,
+		"hosting", "upgrade-options", "hosting /1",
+	})
+	if code != 0 {
+		t.Fatalf("code=%d stderr=%s", code, stderr.String())
+	}
+	if method != http.MethodGet || path != "/api/auth/hosting/hosting%20%2F1/upgrade-options" {
+		t.Fatalf("request = %s %s", method, path)
+	}
+	if authorization != "Bearer token" {
+		t.Fatalf("authorization = %q", authorization)
+	}
+	if !strings.Contains(stdout.String(), `"options": []`) {
+		t.Fatalf("stdout = %s", stdout.String())
+	}
+}
+
+func TestHostingUpgradeCommand(t *testing.T) {
+	setConfigHome(t)
+	var method, path string
+	var body map[string]string
+	var handlerErr error
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		method = request.Method
+		path = request.URL.EscapedPath()
+		handlerErr = json.NewDecoder(request.Body).Decode(&body)
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusAccepted)
+		io.WriteString(writer, `{"jobId":"job-1"}`)
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	app := NewApp(strings.NewReader(""), &stdout, &stderr)
+	code := app.Run(context.Background(), []string{
+		"--token", "token",
+		"--base-url", server.URL,
+		"hosting", "upgrade", "hosting-1",
+		"--data", `{"planId":"plan-2"}`,
+	})
+	if code != 0 {
+		t.Fatalf("code=%d stderr=%s", code, stderr.String())
+	}
+	if handlerErr != nil {
+		t.Fatal(handlerErr)
+	}
+	if method != http.MethodPost || path != "/api/auth/hosting/hosting-1/upgrade" {
+		t.Fatalf("request = %s %s", method, path)
+	}
+	if len(body) != 1 || body["planId"] != "plan-2" {
+		t.Fatalf("body = %#v", body)
+	}
+	if !strings.Contains(stdout.String(), `"jobId": "job-1"`) {
+		t.Fatalf("stdout = %s", stdout.String())
+	}
+}
+
+func TestHostingUpgradeRequiresIDAndBody(t *testing.T) {
+	setConfigHome(t)
+	tests := []struct {
+		name      string
+		arguments []string
+		message   string
+	}{
+		{
+			name:      "options ID",
+			arguments: []string{"hosting", "upgrade-options"},
+			message:   "hosting ID is required",
+		},
+		{
+			name:      "upgrade ID",
+			arguments: []string{"hosting", "upgrade"},
+			message:   "hosting ID is required",
+		},
+		{
+			name:      "upgrade body",
+			arguments: []string{"hosting", "upgrade", "hosting-1"},
+			message:   "request body is required; use --data or --data-file",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			app := NewApp(strings.NewReader(""), &stdout, &stderr)
+			code := app.Run(context.Background(), append([]string{"--token", "token"}, test.arguments...))
+			if code != 1 {
+				t.Fatalf("code = %d", code)
+			}
+			if !strings.Contains(stderr.String(), test.message) {
+				t.Fatalf("stderr = %q", stderr.String())
+			}
+			if stdout.Len() != 0 {
+				t.Fatalf("stdout = %q", stdout.String())
+			}
+		})
+	}
+}
+
+func TestHostingUpgradePrintsAPIErrorBody(t *testing.T) {
+	setConfigHome(t)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusConflict)
+		io.WriteString(writer, `{"code":"HOSTING_UPGRADE_IN_PROGRESS","message":"upgrade already queued"}`)
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	app := NewApp(strings.NewReader(""), &stdout, &stderr)
+	code := app.Run(context.Background(), []string{
+		"--token", "token",
+		"--base-url", server.URL,
+		"hosting", "upgrade", "hosting-1",
+		"--data", `{"planId":"plan-2"}`,
+	})
+	if code != 1 {
+		t.Fatalf("code = %d", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), `"code": "HOSTING_UPGRADE_IN_PROGRESS"`) ||
+		!strings.Contains(stdout.String(), `"message": "upgrade already queued"`) {
+		t.Fatalf("stdout = %s", stdout.String())
+	}
+}
 
 func setConfigHome(t *testing.T) string {
 	t.Helper()

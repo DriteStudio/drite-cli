@@ -184,6 +184,8 @@ drite vps create --data-file .\create-vps.json
 | `POST /api/auth/hosting/{id}/renew` | `Hosting.Renew` | `hosting renew` |
 | `GET /api/auth/hosting/{id}/activation-status` | `Hosting.ActivationStatus` | `hosting activation-status` |
 | `GET /api/auth/hosting/{id}/activity` | `Hosting.Activity` | `hosting activity` |
+| `GET /api/auth/hosting/{id}/upgrade-options` | `Hosting.UpgradeOptions` | `hosting upgrade-options` |
+| `POST /api/auth/hosting/{id}/upgrade` | `Hosting.Upgrade` | `hosting upgrade` |
 | `POST /api/auth/hosting/{id}/autorenew` | `Hosting.ToggleAutoRenewal` | `hosting toggle-auto-renewal` |
 | `GET /api/auth/hosting/{id}/stats` | `Hosting.Stats` | `hosting stats` |
 | `GET /api/auth/hosting/{id}/disk` | `Hosting.Disk` | `hosting disk` |
@@ -201,6 +203,16 @@ drite vps create --data-file .\create-vps.json
   "password": "StrongPassw0rd!"
 }
 ```
+
+ตรวจตัวเลือกและส่งคำขออัปเกรด Hosting:
+
+```powershell
+drite hosting upgrade-options hosting_id
+drite hosting upgrade hosting_id --data '{"planId":"plan_id"}'
+```
+
+Server เป็นผู้ตรวจสิทธิ์และคำนวณส่วนต่างตามวันคงเหลือ การอัปเกรดตอบ `202`
+พร้อม `jobId` เมื่อรับงานเข้าคิวแล้ว
 
 ## Billing API
 
