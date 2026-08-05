@@ -1,6 +1,6 @@
-# Drite Studio Customer HTTP API
+# Dritestudio Customer HTTP API
 
-เอกสารนี้สำหรับลูกค้าที่ต้องการเรียก Drite Studio API จากระบบของตัวเองด้วย
+เอกสารนี้สำหรับลูกค้าที่ต้องการเรียก Dritestudio API จากระบบของตัวเองด้วย
 API token รูปแบบ `dr_live_...`
 
 Base URL:

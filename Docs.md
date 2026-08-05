@@ -1,4 +1,4 @@
-# Drite Studio Customer API: Go SDK and CLI
+# Dritestudio Customer API: Go SDK and CLI
 
 เอกสารนี้อ้างอิง route ฝั่งผู้ใช้ใน `legacy-backend` โดยตรง และอธิบายชื่อ
 function ใน Go SDK ที่ใช้แทนแต่ละ endpoint

@@ -1,7 +1,7 @@
 # Drite CLI and Go SDK
 
-Go client for the Drite Studio customer API. Customers use the `dr_live_...`
-API token created on the Drite Studio website.
+Go client for the Dritestudio customer API. Customers use the `dr_live_...`
+API token created on the Dritestudio website.
 
 This repository contains:
 
