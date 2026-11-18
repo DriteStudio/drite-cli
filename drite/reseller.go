@@ -2,7 +2,6 @@ package drite
 
 import (
 	"context"
-	"errors"
 	"net/http"
 )
 
@@ -31,9 +30,6 @@ func (s *ResellerService) CreateCustomVPS(
 	ctx context.Context,
 	request CreateCustomVPSRequest,
 ) (*Response, error) {
-	if len(request.SSHPublicKeys) > 0 {
-		return nil, errors.New("drite: reseller VPS orders do not accept sshPublicKeys; set keys after provisioning")
-	}
 	return s.client.Request(ctx, http.MethodPost, "/api/reseller/vps/custom", nil, request)
 }
 
@@ -53,8 +49,5 @@ func (s *ResellerService) CreateVPS(
 	ctx context.Context,
 	request CreateVPSRequest,
 ) (*Response, error) {
-	if len(request.SSHPublicKeys) > 0 {
-		return nil, errors.New("drite: reseller VPS orders do not accept sshPublicKeys; set keys after provisioning")
-	}
 	return s.client.Request(ctx, http.MethodPost, "/api/reseller/vps", nil, request)
 }

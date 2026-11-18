@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -87,6 +88,10 @@ func (app *App) Run(ctx context.Context, arguments []string) int {
 		}
 	}
 	if err != nil {
+		var processExit *exec.ExitError
+		if errors.As(err, &processExit) && processExit.ExitCode() >= 0 {
+			return processExit.ExitCode()
+		}
 		if response == nil {
 			fmt.Fprintln(app.Stderr, err)
 		}
@@ -271,7 +276,12 @@ func (app *App) execute(
 		return client.Account.Profile(ctx)
 	case "account":
 		return runAccount(ctx, client, rest)
+	case "ssh-key":
+		return runSSHKey(ctx, client.Account, rest)
 	case "vps":
+		if len(rest) > 0 && (rest[0] == "wait" || rest[0] == "ssh") {
+			return app.runVPSAccess(ctx, client, rest[0], rest[1:])
+		}
 		return runVPS(ctx, client, rest)
 	case "hosting":
 		return runHosting(ctx, client, rest)
@@ -333,8 +343,12 @@ Global flags:
   --timeout 30s            request timeout
 
 Commands:
-  auth, config, me, account, vps, hosting, billing, ticket
+  auth, config, me, account, ssh-key, vps, hosting, billing, ticket
   reseller, public, request, version
+
+VPS access:
+  drite vps wait ID [--timeout 5m] [--interval 2s]
+  drite vps ssh ID [--timeout 5m] [--interval 2s] [-i PATH]
 
 Mutation commands accept --data JSON or --data-file PATH.
 See Docs.md for every action and Go SDK examples.`)

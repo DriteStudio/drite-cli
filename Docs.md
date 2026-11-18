@@ -107,6 +107,9 @@ if errors.As(err, &apiErr) {
 | `POST /api/auth/me/step-up/passkey/verify` | `Account.FinishPasskeyStepUp` | `account passkey-step-up-verify` |
 | `PUT /api/auth/me/api-key/security` | `Account.SetAPIKeySecurity` | `account api-key-security` |
 | `GET /api/auth/me/api-logs` | `Account.APILogs` | `account api-logs` |
+| `GET /api/auth/me/ssh-keys` | `Account.ListSSHKeys` | `ssh-key list` |
+| `POST /api/auth/me/ssh-keys` | `Account.AddSSHKey` | `ssh-key add` |
+| `DELETE /api/auth/me/ssh-keys/{id}` | `Account.DeleteSSHKey` | `ssh-key delete` |
 | `GET /api/auth/me/webhook-events` | `Account.WebhookEvents` | `account webhook-events` |
 | `GET /api/auth/me/webhooks` | `Account.Webhooks` | `account webhooks` |
 | `POST /api/auth/me/webhooks` | `Account.CreateWebhook` | `account create-webhook` |
@@ -140,6 +143,7 @@ if errors.As(err, &apiErr) {
 | `POST /api/auth/vps/custom/quote` | `VPS.QuoteCustom` | `vps custom-quote` |
 | `POST /api/auth/vps/custom` | `VPS.CreateCustom` | `vps custom-create` |
 | `GET /api/auth/vps/{id}` | `VPS.Get` | `vps get` |
+| `GET /api/auth/vps/{id}/ssh-readiness` | `VPS.SSHReadiness`, `VPS.WaitForSSH` | `vps wait`, `vps ssh` |
 | `GET /api/auth/vps/{id}/status` | `VPS.Status` | `vps status` |
 | `GET /api/auth/vps/{id}/stats` | `VPS.Stats` | `vps stats` |
 | `GET /api/auth/vps/{id}/activity` | `VPS.Activity` | `vps activity` |
@@ -181,15 +185,64 @@ if errors.As(err, &apiErr) {
 drite vps create --data-file .\create-vps.json
 ```
 
-ส่ง `sshPublicKeys` เป็น array ใน `vps create`, `vps custom-create` หรือ
-`vps reinstall` สำหรับเทมเพลตที่รองรับ ตอน reinstall ให้ละฟิลด์นี้เพื่อเก็บ
-keys เดิม หรือส่ง `[]` เพื่อล้าง keys ที่ระบบจัดการ
+หากต้องการตั้งชื่อผู้ใช้ Linux ตอนเช่า ให้เพิ่ม `"loginUsername": "deploy_user"`
+ในไฟล์ JSON ที่ส่งให้ `drite vps create --data-file create-vps.json` ใช้ฟิลด์นี้กับ
+`vps custom-create`, `reseller vps create` และ `reseller vps custom-create` ได้ด้วย
 
-`vps ssh-keys VPS_ID --data '{"keys":[]}'` ล้าง keys ที่ระบบจัดการ
+เลือกเทมเพลต Linux ที่มีฟีเจอร์ `login-username` และใช้ customer API key
+ชื่อยาว 1–32 ตัว เริ่มด้วยอักษรอังกฤษพิมพ์เล็ก และมีได้เฉพาะอักษรพิมพ์เล็ก
+ตัวเลข ขีดล่าง หรือขีดกลาง ชื่อบัญชีระบบ เช่น `root` และ `ubuntu` ใช้ไม่ได้
+หากละฟิลด์นี้ VPS Linux ใช้ค่าเริ่มต้นของเทมเพลต เช่น `dritestudio`
+ชื่อที่เลือกใช้ต่อเมื่อ reinstall บนเทมเพลตที่รองรับ
+
+ใช้ SSH public key ที่บันทึกในบัญชีตอนเช่าหรือ reinstall VPS บนเทมเพลตที่มี
+ฟีเจอร์ `ssh-keys`
+
+```bash
+drite ssh-key add --name Laptop --file ~/.ssh/id_ed25519.pub
+drite ssh-key list
+drite vps create --data-file create-vps.json --ssh-key Laptop
+drite ssh-key delete KEY_ID
+```
+
+`--ssh-key` รับชื่อหรือ ID และใช้ซ้ำได้ รองรับทั้ง `vps create`,
+`vps custom-create`, `vps reinstall`, `reseller vps create` และ
+`reseller vps custom-create` ใช้ `sshKeyIds` ใน JSON เพื่อระบุ ID โดยตรง
+และใช้ `sshPublicKeys` เพื่อส่ง public key ของเครื่องนั้น ทั้งสองฟิลด์ใช้ร่วมกันได้
+
+การลบ key จากบัญชีจะลบออกจากรายการให้เลือกในอนาคต VPS ที่ใช้ key นั้นยังคงมี
+สำเนาของตัวเอง ตอน reinstall ให้ละทั้งสองฟิลด์เพื่อเก็บ keys เดิม หรือส่ง
+`{"sshKeyIds":[]}` หรือ `{"sshPublicKeys":[]}` เป็นส่วนหนึ่งของ request
+เพื่อล้าง keys ที่ระบบจัดการ
+
+`vps ssh-keys VPS_ID --ssh-key Laptop` ใช้ key ที่เลือกแทนชุดที่ VPS จัดการอยู่
+`vps ssh-keys VPS_ID --data '{"keys":[]}'` ล้างชุด keys ที่ระบบจัดการ
 ตรวจ `rebootRequired` หลังเปลี่ยน SSH keys หรือ IPv6
 
 หากผลลัพธ์เป็น `202` พร้อม `jobId` ให้ใช้ `VPS.Job` หรือ
 `drite vps job JOB_ID` เพื่อติดตามสถานะจนงานเสร็จ
+
+### รอ VPS พร้อมใช้ SSH
+
+```bash
+drite vps wait VPS_ID
+drite vps ssh VPS_ID -i ~/.ssh/id_ed25519
+```
+
+`vps wait` คืน JSON เมื่อ guest รายงานว่า SSH พร้อม ส่วน `vps ssh`
+รอด้วยเงื่อนไขเดียวกันแล้วเปิดโปรแกรม `ssh` ที่ติดตั้งในเครื่องของคุณ
+ใช้ `-i` หรือ `--identity-file` เพื่อระบุไฟล์ key เมื่อจำเป็น
+โปรแกรม SSH ในเครื่องจัดการการตรวจ host key และการยืนยันตัวตน
+
+ทั้งสองคำสั่งรอได้สูงสุด 5 นาทีและตรวจทุก 2 วินาทีตามค่าเริ่มต้น
+กำหนด `--timeout` และ `--interval` หลัง VPS ID เพื่อเปลี่ยนค่าของคำสั่งนั้น
+`--interval` รับค่าตั้งแต่ `1s` ถึง `30s` ส่วน global `--timeout`
+ที่อยู่ก่อน `vps` กำหนดเวลาของแต่ละ HTTP request
+คำสั่งจบด้วย exit code ที่ไม่ใช่ศูนย์เมื่อการตรวจล้มเหลว, VPS หยุดอยู่,
+เทมเพลตไม่รองรับ หรือหมดเวลารอ
+
+สถานะ `ready` ยืนยันว่า guest ตั้งค่า SSH เสร็จแล้ว
+การเชื่อมต่อยังขึ้นอยู่กับเครือข่าย, firewall และสิทธิ์ SSH ของผู้ใช้
 
 ## Hosting API
 
@@ -308,7 +361,8 @@ drite ticket upload .\debug.log
 ใช้ `planId` จาก `reseller vps plans` เมื่อต้องการสั่งซื้อจาก offer ของบัญชี
 
 สำหรับ VPS ที่ยังเป็นของบัญชี reseller ให้ใช้ `vps job` หรือ `vps status`
-เพื่อติดตามงาน ตั้ง SSH keys หลัง provisioning ด้วย `vps ssh-keys` เมื่อ image รองรับ
+เพื่อติดตามงาน เลือก SSH keys ตอนสั่งซื้อ หรือเปลี่ยนภายหลังด้วย `vps ssh-keys`
+เมื่อ image รองรับ
 ใช้ `hosting plans --account` เพื่อดูราคาโฮสติ้งและส่วนลด reseller ตามสิทธิ์
 
 ## Public API
