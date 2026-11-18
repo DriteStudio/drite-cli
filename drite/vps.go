@@ -43,6 +43,7 @@ type CreateVPSRequest struct {
 	IP            string       `json:"ip,omitempty"`
 	NetworkRef    string       `json:"networkRef,omitempty"`
 	SSHPublicKeys []string     `json:"sshPublicKeys,omitempty"`
+	LoginUsername string       `json:"loginUsername,omitempty"`
 }
 
 type CustomVPSQuoteRequest struct {
@@ -62,6 +63,7 @@ type CreateCustomVPSRequest struct {
 	Name          string       `json:"name"`
 	Password      string       `json:"password"`
 	SSHPublicKeys []string     `json:"sshPublicKeys,omitempty"`
+	LoginUsername string       `json:"loginUsername,omitempty"`
 }
 
 type RenewRequest struct {

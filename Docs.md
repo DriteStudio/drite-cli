@@ -181,6 +181,16 @@ if errors.As(err, &apiErr) {
 drite vps create --data-file .\create-vps.json
 ```
 
+หากต้องการตั้งชื่อผู้ใช้ Linux ตอนเช่า ให้เพิ่ม `"loginUsername": "deploy_user"`
+ในไฟล์ JSON ที่ส่งให้ `drite vps create --data-file create-vps.json` ใช้ฟิลด์นี้กับ
+`vps custom-create`, `reseller vps create` และ `reseller vps custom-create` ได้ด้วย
+
+เลือกเทมเพลต Linux ที่มีฟีเจอร์ `login-username` และใช้ customer API key
+ชื่อยาว 1–32 ตัว เริ่มด้วยอักษรอังกฤษพิมพ์เล็ก และมีได้เฉพาะอักษรพิมพ์เล็ก
+ตัวเลข ขีดล่าง หรือขีดกลาง ชื่อบัญชีระบบ เช่น `root` และ `ubuntu` ใช้ไม่ได้
+หากละฟิลด์นี้ VPS Linux ใช้ค่าเริ่มต้นของเทมเพลต เช่น `dritestudio`
+ชื่อที่เลือกใช้ต่อเมื่อ reinstall บนเทมเพลตที่รองรับ
+
 ส่ง `sshPublicKeys` เป็น array ใน `vps create`, `vps custom-create` หรือ
 `vps reinstall` สำหรับเทมเพลตที่รองรับ ตอน reinstall ให้ละฟิลด์นี้เพื่อเก็บ
 keys เดิม หรือส่ง `[]` เพื่อล้าง keys ที่ระบบจัดการ

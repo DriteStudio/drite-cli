@@ -239,6 +239,11 @@ Create body ใช้ field เดียวกับ Quote และเพิ่
 | `PUT` | `/api/auth/vps/{vpsId}/ssh-keys` | `{"keys":[]}` เพื่อล้าง keys ที่ระบบจัดการ |
 | `DELETE` | `/api/auth/vps/{vpsId}` | - |
 
+คำขอสร้าง VPS แบบแพ็กเกจหรือ Custom ทั้ง Customer และ Reseller รับ `loginUsername`
+เมื่อใช้ customer API key และเลือกเทมเพลต Linux ที่ประกาศฟีเจอร์ `login-username`
+ตัวอย่างค่า `deploy_user` การอ่าน VPS detail จะคืนชื่อที่ตั้งไว้ใน `loginUsername`
+ดูรูปแบบชื่อและตัวอย่างคำสั่งใน [คู่มือ CLI](../Docs.md#vps-api)
+
 Customer VPS รับ `sshPublicKeys` ใน request สร้างและ reinstall
 ตอน reinstall การละฟิลด์นี้จะเก็บ keys เดิม ส่วน `[]` จะล้าง keys ที่ระบบจัดการ
 SSH keys และ IPv6 ใช้ได้ตามฟีเจอร์ของ image ให้ตรวจ `rebootRequired` ในผลลัพธ์
