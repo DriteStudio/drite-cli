@@ -64,9 +64,33 @@ func runAccount(
 		if err != nil {
 			return nil, err
 		}
-		return client.Account.DeletePasskey(ctx, id)
+		body, err := bodyFromArgs[drite.StepUpRequest]("delete passkey", rest[1:], false)
+		if err != nil {
+			return nil, err
+		}
+		return client.Account.DeletePasskeyWithStepUp(ctx, id, body)
+	case "passkey-step-up-options":
+		return client.Account.BeginPasskeyStepUp(ctx)
+	case "passkey-step-up-verify":
+		body, err := bodyFromArgs[drite.PasskeyStepUpRequest]("passkey step-up verify", rest, true)
+		if err != nil {
+			return nil, err
+		}
+		return client.Account.FinishPasskeyStepUp(ctx, body)
 	case "api-logs":
 		return client.Account.APILogs(ctx)
+	case "webhook-events":
+		return client.Account.WebhookEvents(ctx)
+	case "test-webhook":
+		id, err := requireID(rest, "webhook ID")
+		if err != nil {
+			return nil, err
+		}
+		body, err := bodyFromArgs[drite.TestWebhookRequest]("test webhook", rest[1:], true)
+		if err != nil {
+			return nil, err
+		}
+		return client.Account.TestWebhook(ctx, id, body)
 	case "webhooks":
 		return client.Account.Webhooks(ctx)
 	case "create-webhook":
@@ -86,11 +110,11 @@ func runAccount(
 		}
 		return client.Account.DeleteWebhook(ctx, id, body)
 	case "create-api-key":
-		body, err := bodyFromArgs[drite.StepUpRequest]("create API key", rest, false)
+		body, err := bodyFromArgs[drite.CreateAPIKeyRequest]("create API key", rest, false)
 		if err != nil {
 			return nil, err
 		}
-		return client.Account.CreateAPIKey(ctx, body)
+		return client.Account.CreateAPIKeyWithOptions(ctx, body)
 	case "revoke-api-key":
 		body, err := bodyFromArgs[drite.StepUpRequest]("revoke API key", rest, false)
 		if err != nil {
@@ -103,6 +127,30 @@ func runAccount(
 			return nil, err
 		}
 		return client.Account.SetAPIKeySecurity(ctx, body)
+	case "announcements":
+		flags := newFlagSet("account announcements")
+		view := flags.String("view", "", "active or history")
+		cursor := flags.String("cursor", "", "cursor from the previous page")
+		limit := flags.Int("limit", 0, "page size")
+		if err := flags.Parse(rest); err != nil {
+			return nil, err
+		}
+		return client.Account.Announcements(ctx, drite.AnnouncementListOptions{
+			View: *view, Cursor: *cursor, Limit: *limit,
+		})
+	case "announcements-unread-count":
+		return client.Account.AnnouncementUnreadCount(ctx)
+	case "announcements-read-all":
+		return client.Account.ReadAllAnnouncements(ctx)
+	case "announcement", "announcement-read":
+		id, err := requireID(rest, "announcement ID")
+		if err != nil {
+			return nil, err
+		}
+		if action == "announcement-read" {
+			return client.Account.ReadAnnouncement(ctx, id)
+		}
+		return client.Account.Announcement(ctx, id)
 	default:
 		return nil, fmt.Errorf("unknown account action %q", action)
 	}

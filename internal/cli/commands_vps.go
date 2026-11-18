@@ -104,12 +104,25 @@ func runVPS(
 			return nil, err
 		}
 		return client.VPS.CreateSnapshot(ctx, id, body)
-	case "snapshot-delete":
+	case "snapshot-delete", "snapshot-rollback":
 		snapshotID, err := requireID(bodyArgs, "snapshot ID")
 		if err != nil {
 			return nil, err
 		}
+		if action == "snapshot-rollback" {
+			return client.VPS.RollbackSnapshot(ctx, id, snapshotID)
+		}
 		return client.VPS.DeleteSnapshot(ctx, id, snapshotID)
+	case "ipv6-request":
+		return client.VPS.RequestIPv6(ctx, id)
+	case "ipv6-release":
+		return client.VPS.ReleaseIPv6(ctx, id)
+	case "ssh-keys":
+		body, err := bodyFromArgs[drite.SetSSHPublicKeysRequest]("vps ssh-keys", bodyArgs, true)
+		if err != nil {
+			return nil, err
+		}
+		return client.VPS.SetSSHPublicKeys(ctx, id, body)
 	case "renew":
 		body, err := bodyFromArgs[drite.RenewRequest]("vps renew", bodyArgs, true)
 		if err != nil {

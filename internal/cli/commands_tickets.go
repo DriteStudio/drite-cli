@@ -39,6 +39,12 @@ func runTickets(
 			return nil, err
 		}
 		return client.Tickets.Create(ctx, body)
+	case "upload-url":
+		body, err := bodyFromArgs[drite.PresignTicketAttachmentRequest]("ticket upload-url", rest, true)
+		if err != nil {
+			return nil, err
+		}
+		return client.Tickets.PresignAttachment(ctx, body)
 	case "upload":
 		filePath, err := requireID(rest, "file path")
 		if err != nil {
@@ -81,7 +87,9 @@ func runTickets(
 			return nil, err
 		}
 		return client.Tickets.Reply(ctx, id, body)
+	case "close":
+		return client.Tickets.Close(ctx, id)
 	default:
-		return nil, fmt.Errorf("unknown ticket action %q; customers cannot close tickets", action)
+		return nil, fmt.Errorf("unknown ticket action %q", action)
 	}
 }

@@ -15,9 +15,19 @@ func runReseller(
 	client *drite.Client,
 	arguments []string,
 ) (*drite.Response, error) {
-	action, rest, err := requireAction(arguments, "usage: drite reseller ACTION")
+	action, rest, err := requireAction(arguments, "usage: drite reseller vps ACTION")
 	if err != nil {
 		return nil, err
+	}
+	if action == "vps" {
+		action, rest, err = requireAction(rest, "usage: drite reseller vps plans|templates|list|get|create|custom-quote|custom-create")
+		if err != nil {
+			return nil, err
+		}
+		switch action {
+		case "plans", "templates", "list", "get", "create":
+			action = "vps-" + action
+		}
 	}
 	switch action {
 	case "vps-plans":

@@ -13,6 +13,7 @@ type AccountService struct {
 type StepUpRequest struct {
 	CurrentPassword string `json:"currentPassword,omitempty"`
 	TOTPCode        string `json:"totpCode,omitempty"`
+	StepUpProof     string `json:"stepUpProof,omitempty"`
 }
 
 type UpdateProfileRequest struct {
@@ -21,6 +22,7 @@ type UpdateProfileRequest struct {
 	CurrentPassword string `json:"currentPassword,omitempty"`
 	NewPassword     string `json:"newPassword,omitempty"`
 	TOTPCode        string `json:"totpCode,omitempty"`
+	StepUpProof     string `json:"stepUpProof,omitempty"`
 	TOTPSecret      string `json:"totpSecret,omitempty"`
 	DisableTOTP     *bool  `json:"disableTotp,omitempty"`
 }
@@ -31,17 +33,35 @@ type PasskeyRegistrationRequest struct {
 }
 
 type APIKeySecurityRequest struct {
-	AllowedIPs      []string `json:"allowedIps"`
+	AllowedIPs      []string `json:"allowedIps,omitempty"`
 	CurrentPassword string   `json:"currentPassword,omitempty"`
 	TOTPCode        string   `json:"totpCode,omitempty"`
+	StepUpProof     string   `json:"stepUpProof,omitempty"`
 }
 
 type CreateWebhookRequest struct {
+	Type            string   `json:"type,omitempty"`
 	URL             string   `json:"url"`
 	Events          []string `json:"events"`
 	Secret          string   `json:"secret,omitempty"`
 	CurrentPassword string   `json:"currentPassword,omitempty"`
 	TOTPCode        string   `json:"totpCode,omitempty"`
+	StepUpProof     string   `json:"stepUpProof,omitempty"`
+}
+
+type TestWebhookRequest struct {
+	StepUpRequest
+	Event string `json:"event"`
+}
+
+type CreateAPIKeyRequest struct {
+	StepUpRequest
+	ExpiresAt string `json:"expiresAt,omitempty"`
+}
+
+type PasskeyStepUpRequest struct {
+	FlowID   string `json:"flowId"`
+	Response any    `json:"response"`
 }
 
 func (s *AccountService) Profile(ctx context.Context) (*Response, error) {
@@ -96,11 +116,15 @@ func (s *AccountService) FinishPasskeyRegistration(
 }
 
 func (s *AccountService) DeletePasskey(ctx context.Context, passkeyID string) (*Response, error) {
+	return s.DeletePasskeyWithStepUp(ctx, passkeyID, StepUpRequest{})
+}
+
+func (s *AccountService) DeletePasskeyWithStepUp(ctx context.Context, passkeyID string, request StepUpRequest) (*Response, error) {
 	id, err := pathSegment(passkeyID, "passkey ID")
 	if err != nil {
 		return nil, err
 	}
-	return s.client.Request(ctx, http.MethodDelete, "/api/auth/me/passkeys/"+id, nil, nil)
+	return s.client.Request(ctx, http.MethodDelete, "/api/auth/me/passkeys/"+id, nil, request)
 }
 
 func (s *AccountService) SetAPIKeySecurity(
@@ -112,6 +136,26 @@ func (s *AccountService) SetAPIKeySecurity(
 
 func (s *AccountService) APILogs(ctx context.Context) (*Response, error) {
 	return s.client.Request(ctx, http.MethodGet, "/api/auth/me/api-logs", nil, nil)
+}
+
+func (s *AccountService) BeginPasskeyStepUp(ctx context.Context) (*Response, error) {
+	return s.client.Request(ctx, http.MethodPost, "/api/auth/me/step-up/passkey/options", nil, struct{}{})
+}
+
+func (s *AccountService) FinishPasskeyStepUp(ctx context.Context, request PasskeyStepUpRequest) (*Response, error) {
+	return s.client.Request(ctx, http.MethodPost, "/api/auth/me/step-up/passkey/verify", nil, request)
+}
+
+func (s *AccountService) WebhookEvents(ctx context.Context) (*Response, error) {
+	return s.client.Request(ctx, http.MethodGet, "/api/auth/me/webhook-events", nil, nil)
+}
+
+func (s *AccountService) TestWebhook(ctx context.Context, webhookID string, request TestWebhookRequest) (*Response, error) {
+	id, err := pathSegment(webhookID, "webhook ID")
+	if err != nil {
+		return nil, err
+	}
+	return s.client.Request(ctx, http.MethodPost, "/api/auth/me/webhooks/"+id+"/test", nil, request)
 }
 
 func (s *AccountService) Webhooks(ctx context.Context) (*Response, error) {
@@ -138,6 +182,10 @@ func (s *AccountService) DeleteWebhook(
 }
 
 func (s *AccountService) CreateAPIKey(ctx context.Context, request StepUpRequest) (*Response, error) {
+	return s.CreateAPIKeyWithOptions(ctx, CreateAPIKeyRequest{StepUpRequest: request})
+}
+
+func (s *AccountService) CreateAPIKeyWithOptions(ctx context.Context, request CreateAPIKeyRequest) (*Response, error) {
 	return s.client.Request(ctx, http.MethodPost, "/api/auth/me/api-key", nil, request)
 }
 

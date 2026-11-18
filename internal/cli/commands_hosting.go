@@ -18,6 +18,14 @@ func runHosting(
 	}
 	switch action {
 	case "plans":
+		flags := newFlagSet("hosting plans")
+		account := flags.Bool("account", false, "show pricing for the authenticated account")
+		if err := flags.Parse(rest); err != nil {
+			return nil, err
+		}
+		if *account {
+			return client.Hosting.AccountPlans(ctx)
+		}
 		return client.Hosting.Plans(ctx)
 	case "list":
 		return client.Hosting.List(ctx)
@@ -63,6 +71,21 @@ func runHosting(
 		return client.Hosting.Activity(ctx, id)
 	case "upgrade-options":
 		return client.Hosting.UpgradeOptions(ctx, id)
+	case "upgrade-status":
+		return client.Hosting.UpgradeStatus(ctx, id)
+	case "usage":
+		flags := newFlagSet("hosting usage")
+		fresh := flags.Bool("fresh", false, "fetch live usage from Plesk")
+		if err := flags.Parse(bodyArgs); err != nil {
+			return nil, err
+		}
+		return client.Hosting.Usage(ctx, id, *fresh)
+	case "databases":
+		return client.Hosting.Databases(ctx, id)
+	case "emails":
+		return client.Hosting.Emails(ctx, id)
+	case "sites":
+		return client.Hosting.Sites(ctx, id)
 	case "upgrade":
 		body, err := bodyFromArgs[drite.UpgradeHostingRequest]("hosting upgrade", bodyArgs, true)
 		if err != nil {

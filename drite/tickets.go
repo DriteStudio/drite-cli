@@ -119,8 +119,13 @@ func (s *TicketService) Reply(
 	return s.client.Request(ctx, http.MethodPost, path+"/reply", nil, request)
 }
 
-// Close is intentionally not exposed: the backend now requires staff to close
-// tickets so the one-active-ticket customer gate cannot be bypassed.
+func (s *TicketService) Close(ctx context.Context, ticketID string) (*Response, error) {
+	path, err := ticketPath(ticketID)
+	if err != nil {
+		return nil, err
+	}
+	return s.client.Request(ctx, http.MethodPut, path+"/close", nil, nil)
+}
 
 func (s *TicketService) PresignAttachment(
 	ctx context.Context,

@@ -1,6 +1,6 @@
 # Dritestudio Customer API: Go SDK and CLI
 
-เอกสารนี้อ้างอิง route ฝั่งผู้ใช้ใน `legacy-backend` โดยตรง และอธิบายชื่อ
+เอกสารนี้อ้างอิง route ฝั่งผู้ใช้ใน `backend` โดยตรง และอธิบายชื่อ
 function ใน Go SDK ที่ใช้แทนแต่ละ endpoint
 
 สำหรับเอกสาร HTTP API ที่ใช้ได้จากทุกภาษา รวมตัวอย่าง `curl`, request body,
@@ -102,18 +102,28 @@ if errors.As(err, &apiErr) {
 | `GET /api/auth/me/passkeys` | `Account.Passkeys` | `account passkeys` |
 | `POST /api/auth/me/passkeys/register-options` | `Account.BeginPasskeyRegistration` | `account passkey-options` |
 | `POST /api/auth/me/passkeys/register-verify` | `Account.FinishPasskeyRegistration` | `account passkey-register` |
-| `DELETE /api/auth/me/passkeys/{id}` | `Account.DeletePasskey` | `account delete-passkey` |
+| `DELETE /api/auth/me/passkeys/{id}` | `Account.DeletePasskeyWithStepUp` | `account delete-passkey` |
+| `POST /api/auth/me/step-up/passkey/options` | `Account.BeginPasskeyStepUp` | `account passkey-step-up-options` |
+| `POST /api/auth/me/step-up/passkey/verify` | `Account.FinishPasskeyStepUp` | `account passkey-step-up-verify` |
 | `PUT /api/auth/me/api-key/security` | `Account.SetAPIKeySecurity` | `account api-key-security` |
 | `GET /api/auth/me/api-logs` | `Account.APILogs` | `account api-logs` |
+| `GET /api/auth/me/webhook-events` | `Account.WebhookEvents` | `account webhook-events` |
 | `GET /api/auth/me/webhooks` | `Account.Webhooks` | `account webhooks` |
 | `POST /api/auth/me/webhooks` | `Account.CreateWebhook` | `account create-webhook` |
 | `DELETE /api/auth/me/webhooks/{id}` | `Account.DeleteWebhook` | `account delete-webhook` |
-| `POST /api/auth/me/api-key` | `Account.CreateAPIKey` | `account create-api-key` |
+| `POST /api/auth/me/webhooks/{id}/test` | `Account.TestWebhook` | `account test-webhook` |
+| `GET /api/auth/me/announcements` | `Account.Announcements` | `account announcements` |
+| `GET /api/auth/me/announcements/{id}` | `Account.Announcement` | `account announcement` |
+| `GET /api/auth/me/announcements/unread-count` | `Account.AnnouncementUnreadCount` | `account announcements-unread-count` |
+| `POST /api/auth/me/announcements/{id}/read` | `Account.ReadAnnouncement` | `account announcement-read` |
+| `POST /api/auth/me/announcements/read-all` | `Account.ReadAllAnnouncements` | `account announcements-read-all` |
+| `POST /api/auth/me/api-key` | `Account.CreateAPIKeyWithOptions` | `account create-api-key` |
 | `DELETE /api/auth/me/api-key` | `Account.RevokeAPIKey` | `account revoke-api-key` |
 
 การเปลี่ยน API key, webhook, session และ security policy อาจต้องส่ง
-`currentPassword` หรือ `totpCode` ใน request body ตาม step-up authentication
-ของบัญชี
+`currentPassword` หรือ `totpCode` ตามการตั้งค่าบัญชี การใช้ `stepUpProof`
+ต้องยืนยันด้วย Passkey และส่ง JWT ของ session เดียวกันเป็น Bearer token
+ส่ง `expiresAt` เป็นวันเวลา ISO 8601 เมื่อต้องการกำหนดวันหมดอายุของ API key
 
 ## VPS API
 
@@ -138,6 +148,10 @@ if errors.As(err, &apiErr) {
 | `GET /api/auth/vps/{id}/snapshots` | `VPS.Snapshots` | `vps snapshots` |
 | `POST /api/auth/vps/{id}/snapshots` | `VPS.CreateSnapshot` | `vps snapshot-create` |
 | `DELETE /api/auth/vps/{id}/snapshots/{snapshotId}` | `VPS.DeleteSnapshot` | `vps snapshot-delete` |
+| `POST /api/auth/vps/{id}/snapshots/{snapshotId}/rollback` | `VPS.RollbackSnapshot` | `vps snapshot-rollback` |
+| `POST /api/auth/vps/{id}/ipv6` | `VPS.RequestIPv6` | `vps ipv6-request` |
+| `DELETE /api/auth/vps/{id}/ipv6` | `VPS.ReleaseIPv6` | `vps ipv6-release` |
+| `PUT /api/auth/vps/{id}/ssh-keys` | `VPS.SetSSHPublicKeys` | `vps ssh-keys` |
 | `POST /api/auth/vps/{id}/renew` | `VPS.Renew` | `vps renew` |
 | `POST /api/auth/vps/{id}/auto-renewal` | `VPS.SetAutoRenewal` | `vps auto-renewal` |
 | `POST /api/auth/vps/{id}/rename` | `VPS.Rename` | `vps rename` |
@@ -167,14 +181,22 @@ if errors.As(err, &apiErr) {
 drite vps create --data-file .\create-vps.json
 ```
 
-หลาย operation ตอบ `202` พร้อม `jobId`; ใช้ `VPS.Job` หรือ `drite vps job`
-ตรวจจน status เป็น terminal state
+ส่ง `sshPublicKeys` เป็น array ใน `vps create`, `vps custom-create` หรือ
+`vps reinstall` สำหรับเทมเพลตที่รองรับ ตอน reinstall ให้ละฟิลด์นี้เพื่อเก็บ
+keys เดิม หรือส่ง `[]` เพื่อล้าง keys ที่ระบบจัดการ
+
+`vps ssh-keys VPS_ID --data '{"keys":[]}'` ล้าง keys ที่ระบบจัดการ
+ตรวจ `rebootRequired` หลังเปลี่ยน SSH keys หรือ IPv6
+
+หากผลลัพธ์เป็น `202` พร้อม `jobId` ให้ใช้ `VPS.Job` หรือ
+`drite vps job JOB_ID` เพื่อติดตามสถานะจนงานเสร็จ
 
 ## Hosting API
 
 | HTTP endpoint | Go function | CLI action |
 | --- | --- | --- |
 | `GET /api/un_auth/hosting/plans` | `Hosting.Plans` | `hosting plans` |
+| `GET /api/auth/hosting/plans` | `Hosting.AccountPlans` | `hosting plans --account` |
 | `GET /api/auth/hosting/check-domain` | `Hosting.CheckDomain` | `hosting check-domain` |
 | `POST /api/auth/hosting/verify-domain` | `Hosting.VerifyDomain` | `hosting verify-domain` |
 | `GET /api/auth/hosting/list` | `Hosting.List` | `hosting list` |
@@ -186,6 +208,11 @@ drite vps create --data-file .\create-vps.json
 | `GET /api/auth/hosting/{id}/activity` | `Hosting.Activity` | `hosting activity` |
 | `GET /api/auth/hosting/{id}/upgrade-options` | `Hosting.UpgradeOptions` | `hosting upgrade-options` |
 | `POST /api/auth/hosting/{id}/upgrade` | `Hosting.Upgrade` | `hosting upgrade` |
+| `GET /api/auth/hosting/{id}/upgrade-status` | `Hosting.UpgradeStatus` | `hosting upgrade-status` |
+| `GET /api/auth/hosting/{id}/usage` | `Hosting.Usage` | `hosting usage` |
+| `GET /api/auth/hosting/{id}/databases` | `Hosting.Databases` | `hosting databases` |
+| `GET /api/auth/hosting/{id}/emails` | `Hosting.Emails` | `hosting emails` |
+| `GET /api/auth/hosting/{id}/sites` | `Hosting.Sites` | `hosting sites` |
 | `POST /api/auth/hosting/{id}/autorenew` | `Hosting.ToggleAutoRenewal` | `hosting toggle-auto-renewal` |
 | `GET /api/auth/hosting/{id}/stats` | `Hosting.Stats` | `hosting stats` |
 | `GET /api/auth/hosting/{id}/disk` | `Hosting.Disk` | `hosting disk` |
@@ -212,7 +239,8 @@ drite hosting upgrade hosting_id --data '{"planId":"plan_id"}'
 ```
 
 Server เป็นผู้ตรวจสิทธิ์และคำนวณส่วนต่างตามวันคงเหลือ การอัปเกรดตอบ `202`
-พร้อม `jobId` เมื่อรับงานเข้าคิวแล้ว
+พร้อม `jobId` เมื่อรับงานเข้าคิวแล้ว ใช้ `hosting upgrade-status HOSTING_ID`
+เพื่อติดตามงาน ใช้ `hosting usage HOSTING_ID --fresh` เพื่อขอข้อมูลสดจาก Plesk
 
 ## Billing API
 
@@ -235,14 +263,12 @@ Server เป็นผู้ตรวจสิทธิ์และคำนว�
 | `GET /api/auth/ticket/{id}/updates` | `Tickets.Updates` | `ticket updates` |
 | `POST /api/auth/ticket` | `Tickets.Create` | `ticket create` |
 | `POST /api/auth/ticket/{id}/reply` | `Tickets.Reply` | `ticket reply` |
-| `POST /api/auth/ticket/upload-url` | `Tickets.PresignAttachment` | ใช้ function โดยตรง |
+| `PUT /api/auth/ticket/{id}/close` | `Tickets.Close` | `ticket close` |
+| `POST /api/auth/ticket/upload-url` | `Tickets.PresignAttachment` | `ticket upload-url` |
 | `POST /api/auth/ticket/upload` | `Tickets.UploadAttachment` | `ticket upload` |
 
-ลูกค้าไม่สามารถปิด Ticket เองได้ เจ้าหน้าที่ต้องปิดผ่าน backoffice เพื่อปลด
-one-active-ticket gate ดังนั้น SDK ใหม่ตั้งใจไม่เปิด `Close` function
-
-หนึ่งบัญชีมี Ticket ที่ยังไม่ `closed` ได้หนึ่งใบ หาก API ตอบ
-`TICKET_ACTIVE_LIMIT` ให้ใช้ `activeTicketId` เปิด Ticket เดิม
+แต่ละบัญชีมี Ticket ที่ยังเปิดอยู่ได้สูงสุด 3 ใบ หาก API ตอบ `TICKET_ACTIVE_LIMIT`
+ให้ดู `activeTicketIds` แล้วปิด Ticket ที่จบแล้วด้วย `ticket close TICKET_ID`
 
 Upload flow:
 
@@ -266,17 +292,24 @@ drite ticket upload .\debug.log
 
 ## Reseller API
 
-ใช้ได้เฉพาะ API key ของบัญชี reseller:
+ใช้ API key ของบัญชี reseller ที่ยืนยันอีเมลแล้ว
 
 | HTTP endpoint | Go function | CLI |
 | --- | --- | --- |
-| `GET /api/reseller/vps/plans` | `Reseller.VPSPlans` | `reseller vps-plans` |
-| `GET /api/reseller/vps/templates` | `Reseller.VPSTemplates` | `reseller vps-templates` |
-| `GET /api/reseller/vps` | `Reseller.VPSList` | `reseller vps-list` |
-| `GET /api/reseller/vps/{id}` | `Reseller.VPS` | `reseller vps-get` |
-| `POST /api/reseller/vps` | `Reseller.CreateVPS` | `reseller vps-create` |
-| `POST /api/reseller/vps/custom/quote` | `Reseller.QuoteCustomVPS` | `reseller custom-quote` |
-| `POST /api/reseller/vps/custom` | `Reseller.CreateCustomVPS` | `reseller custom-create` |
+| `GET /api/reseller/vps/plans` | `Reseller.VPSPlans` | `reseller vps plans` |
+| `GET /api/reseller/vps/templates` | `Reseller.VPSTemplates` | `reseller vps templates` |
+| `GET /api/reseller/vps` | `Reseller.VPSList` | `reseller vps list` |
+| `GET /api/reseller/vps/{id}` | `Reseller.VPS` | `reseller vps get` |
+| `POST /api/reseller/vps` | `Reseller.CreateVPS` | `reseller vps create` |
+| `POST /api/reseller/vps/custom/quote` | `Reseller.QuoteCustomVPS` | `reseller vps custom-quote` |
+| `POST /api/reseller/vps/custom` | `Reseller.CreateCustomVPS` | `reseller vps custom-create` |
+
+คำสั่งเดิม เช่น `reseller vps-plans` และ `reseller custom-quote` ยังใช้ได้
+ใช้ `planId` จาก `reseller vps plans` เมื่อต้องการสั่งซื้อจาก offer ของบัญชี
+
+สำหรับ VPS ที่ยังเป็นของบัญชี reseller ให้ใช้ `vps job` หรือ `vps status`
+เพื่อติดตามงาน ตั้ง SSH keys หลัง provisioning ด้วย `vps ssh-keys` เมื่อ image รองรับ
+ใช้ `hosting plans --account` เพื่อดูราคาโฮสติ้งและส่วนลด reseller ตามสิทธิ์
 
 ## Public API
 

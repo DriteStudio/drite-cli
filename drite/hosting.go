@@ -31,6 +31,11 @@ func (s *HostingService) Plans(ctx context.Context) (*Response, error) {
 	return s.client.PublicRequest(ctx, http.MethodGet, "/api/un_auth/hosting/plans", nil)
 }
 
+// AccountPlans returns plans with pricing for the authenticated account.
+func (s *HostingService) AccountPlans(ctx context.Context) (*Response, error) {
+	return s.client.Request(ctx, http.MethodGet, "/api/auth/hosting/plans", nil, nil)
+}
+
 func (s *HostingService) CheckDomain(ctx context.Context, domain string) (*Response, error) {
 	return s.client.Request(
 		ctx,
@@ -92,6 +97,34 @@ func (s *HostingService) Activity(ctx context.Context, hostingID string) (*Respo
 
 func (s *HostingService) UpgradeOptions(ctx context.Context, hostingID string) (*Response, error) {
 	return s.getAction(ctx, hostingID, "upgrade-options")
+}
+
+func (s *HostingService) UpgradeStatus(ctx context.Context, hostingID string) (*Response, error) {
+	return s.getAction(ctx, hostingID, "upgrade-status")
+}
+
+func (s *HostingService) Usage(ctx context.Context, hostingID string, fresh bool) (*Response, error) {
+	path, err := hostingPath(hostingID)
+	if err != nil {
+		return nil, err
+	}
+	var query url.Values
+	if fresh {
+		query = url.Values{"fresh": {"1"}}
+	}
+	return s.client.Request(ctx, http.MethodGet, path+"/usage", query, nil)
+}
+
+func (s *HostingService) Databases(ctx context.Context, hostingID string) (*Response, error) {
+	return s.getAction(ctx, hostingID, "databases")
+}
+
+func (s *HostingService) Emails(ctx context.Context, hostingID string) (*Response, error) {
+	return s.getAction(ctx, hostingID, "emails")
+}
+
+func (s *HostingService) Sites(ctx context.Context, hostingID string) (*Response, error) {
+	return s.getAction(ctx, hostingID, "sites")
 }
 
 func (s *HostingService) Upgrade(

@@ -35,13 +35,14 @@ func (options VPSListOptions) query() url.Values {
 }
 
 type CreateVPSRequest struct {
-	Name         string       `json:"name"`
-	TemplateID   string       `json:"templateId"`
-	PlanID       string       `json:"planId"`
-	DurationType DurationType `json:"durationType"`
-	Password     string       `json:"password"`
-	IP           string       `json:"ip,omitempty"`
-	NetworkRef   string       `json:"networkRef,omitempty"`
+	Name          string       `json:"name"`
+	TemplateID    string       `json:"templateId"`
+	PlanID        string       `json:"planId"`
+	DurationType  DurationType `json:"durationType"`
+	Password      string       `json:"password"`
+	IP            string       `json:"ip,omitempty"`
+	NetworkRef    string       `json:"networkRef,omitempty"`
+	SSHPublicKeys []string     `json:"sshPublicKeys,omitempty"`
 }
 
 type CustomVPSQuoteRequest struct {
@@ -53,13 +54,14 @@ type CustomVPSQuoteRequest struct {
 }
 
 type CreateCustomVPSRequest struct {
-	TemplateID   string       `json:"templateId"`
-	DurationType DurationType `json:"durationType"`
-	CPU          int          `json:"cpu"`
-	RAM          int          `json:"ram"`
-	Disk         int          `json:"disk"`
-	Name         string       `json:"name"`
-	Password     string       `json:"password"`
+	TemplateID    string       `json:"templateId"`
+	DurationType  DurationType `json:"durationType"`
+	CPU           int          `json:"cpu"`
+	RAM           int          `json:"ram"`
+	Disk          int          `json:"disk"`
+	Name          string       `json:"name"`
+	Password      string       `json:"password"`
+	SSHPublicKeys []string     `json:"sshPublicKeys,omitempty"`
 }
 
 type RenewRequest struct {
@@ -81,6 +83,12 @@ type RenameVPSRequest struct {
 type ReinstallVPSRequest struct {
 	TemplateID string `json:"templateId"`
 	Password   string `json:"password"`
+	// Omit to keep existing keys. An explicit empty slice clears them.
+	SSHPublicKeys *[]string `json:"sshPublicKeys,omitempty"`
+}
+
+type SetSSHPublicKeysRequest struct {
+	Keys []string `json:"keys"`
 }
 
 type ResetPasswordRequest struct {
@@ -235,15 +243,54 @@ func (s *VPSService) DeleteSnapshot(
 	vpsID string,
 	snapshotID string,
 ) (*Response, error) {
+	path, err := snapshotPath(vpsID, snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	return s.client.Request(ctx, http.MethodDelete, path, nil, nil)
+}
+
+func (s *VPSService) RollbackSnapshot(ctx context.Context, vpsID, snapshotID string) (*Response, error) {
+	path, err := snapshotPath(vpsID, snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	return s.client.Request(ctx, http.MethodPost, path+"/rollback", nil, nil)
+}
+
+func snapshotPath(vpsID, snapshotID string) (string, error) {
+	path, err := vpsPath(vpsID)
+	if err != nil {
+		return "", err
+	}
+	snapshot, err := pathSegment(snapshotID, "snapshot ID")
+	if err != nil {
+		return "", err
+	}
+	return path + "/snapshots/" + snapshot, nil
+}
+
+func (s *VPSService) RequestIPv6(ctx context.Context, vpsID string) (*Response, error) {
+	return s.simpleAction(ctx, vpsID, "ipv6")
+}
+
+func (s *VPSService) ReleaseIPv6(ctx context.Context, vpsID string) (*Response, error) {
 	path, err := vpsPath(vpsID)
 	if err != nil {
 		return nil, err
 	}
-	snapshot, err := pathSegment(snapshotID, "snapshot ID")
+	return s.client.Request(ctx, http.MethodDelete, path+"/ipv6", nil, nil)
+}
+
+func (s *VPSService) SetSSHPublicKeys(ctx context.Context, vpsID string, request SetSSHPublicKeysRequest) (*Response, error) {
+	path, err := vpsPath(vpsID)
 	if err != nil {
 		return nil, err
 	}
-	return s.client.Request(ctx, http.MethodDelete, path+"/snapshots/"+snapshot, nil, nil)
+	if request.Keys == nil {
+		return nil, fmt.Errorf("drite: keys must be an array; use [] to clear managed SSH keys")
+	}
+	return s.client.Request(ctx, http.MethodPut, path+"/ssh-keys", nil, request)
 }
 
 func (s *VPSService) Create(ctx context.Context, request CreateVPSRequest) (*Response, error) {
