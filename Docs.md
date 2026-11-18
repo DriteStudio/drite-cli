@@ -143,6 +143,7 @@ if errors.As(err, &apiErr) {
 | `POST /api/auth/vps/custom/quote` | `VPS.QuoteCustom` | `vps custom-quote` |
 | `POST /api/auth/vps/custom` | `VPS.CreateCustom` | `vps custom-create` |
 | `GET /api/auth/vps/{id}` | `VPS.Get` | `vps get` |
+| `GET /api/auth/vps/{id}/ssh-readiness` | `VPS.SSHReadiness`, `VPS.WaitForSSH` | `vps wait`, `vps ssh` |
 | `GET /api/auth/vps/{id}/status` | `VPS.Status` | `vps status` |
 | `GET /api/auth/vps/{id}/stats` | `VPS.Stats` | `vps stats` |
 | `GET /api/auth/vps/{id}/activity` | `VPS.Activity` | `vps activity` |
@@ -220,6 +221,28 @@ drite ssh-key delete KEY_ID
 
 หากผลลัพธ์เป็น `202` พร้อม `jobId` ให้ใช้ `VPS.Job` หรือ
 `drite vps job JOB_ID` เพื่อติดตามสถานะจนงานเสร็จ
+
+### รอ VPS พร้อมใช้ SSH
+
+```bash
+drite vps wait VPS_ID
+drite vps ssh VPS_ID -i ~/.ssh/id_ed25519
+```
+
+`vps wait` คืน JSON เมื่อ guest รายงานว่า SSH พร้อม ส่วน `vps ssh`
+รอด้วยเงื่อนไขเดียวกันแล้วเปิดโปรแกรม `ssh` ที่ติดตั้งในเครื่องของคุณ
+ใช้ `-i` หรือ `--identity-file` เพื่อระบุไฟล์ key เมื่อจำเป็น
+โปรแกรม SSH ในเครื่องจัดการการตรวจ host key และการยืนยันตัวตน
+
+ทั้งสองคำสั่งรอได้สูงสุด 5 นาทีและตรวจทุก 2 วินาทีตามค่าเริ่มต้น
+กำหนด `--timeout` และ `--interval` หลัง VPS ID เพื่อเปลี่ยนค่าของคำสั่งนั้น
+`--interval` รับค่าตั้งแต่ `1s` ถึง `30s` ส่วน global `--timeout`
+ที่อยู่ก่อน `vps` กำหนดเวลาของแต่ละ HTTP request
+คำสั่งจบด้วย exit code ที่ไม่ใช่ศูนย์เมื่อการตรวจล้มเหลว, VPS หยุดอยู่,
+เทมเพลตไม่รองรับ หรือหมดเวลารอ
+
+สถานะ `ready` ยืนยันว่า guest ตั้งค่า SSH เสร็จแล้ว
+การเชื่อมต่อยังขึ้นอยู่กับเครือข่าย, firewall และสิทธิ์ SSH ของผู้ใช้
 
 ## Hosting API
 

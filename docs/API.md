@@ -175,6 +175,7 @@ Webhook รับ `type` เป็น `generic` หรือ `discord` ค่า
 | `GET` | `/api/auth/vps/failed` | `take`, `skip` |
 | `DELETE` | `/api/auth/vps/failed/{failureId}` | - |
 | `GET` | `/api/auth/vps/{vpsId}` | - |
+| `GET` | `/api/auth/vps/{vpsId}/ssh-readiness` | - |
 | `GET` | `/api/auth/vps/{vpsId}/status` | - |
 | `GET` | `/api/auth/vps/{vpsId}/stats` | - |
 | `GET` | `/api/auth/vps/{vpsId}/activity` | - |
@@ -267,6 +268,34 @@ keys เดิม ส่ง array ว่างในฟิลด์ใดฟิ�
 Operation ที่ตอบ `202` จะมี `jobId` หรือ operation identifier ให้เรียก
 `GET /api/auth/vps/job/{jobId}` จนถึง terminal state ไม่ควรยิง action ซ้ำระหว่าง
 VPS อยู่ในสถานะทำงาน
+
+### SSH readiness
+
+`GET /api/auth/vps/{vpsId}/ssh-readiness` คืนข้อมูลเฉพาะ VPS ของบัญชี
+
+```json
+{
+	"data": {
+		"status": "ready",
+		"username": "deploy_user",
+		"ip": "203.0.113.10",
+		"checkedAt": "2026-11-18T08:00:00Z"
+	}
+}
+```
+
+| Status | ความหมาย |
+| --- | --- |
+| `ready` | Guest ยืนยันว่าตั้งค่า SSH เสร็จแล้ว |
+| `starting` | VPS กำลังเริ่มหรือ guest ยังตั้งค่าไม่เสร็จ |
+| `stopped` | VPS หยุดอยู่ |
+| `unsupported` | เทมเพลตไม่รองรับการรายงานสถานะ SSH |
+| `unknown` | ยังยืนยันสถานะจาก guest ไม่ได้ |
+| `failed` | การตั้งค่า guest ล้มเหลว |
+
+ใช้ `username` และ `ip` เมื่อสถานะเป็น `ready` เท่านั้น
+`checkedAt` อาจเป็น `null` สถานะนี้รายงานการตั้งค่าใน guest
+โดยความพร้อมจากเครื่องลูกข่ายยังขึ้นอยู่กับเครือข่าย, firewall และการยืนยันตัวตน
 
 ## Hosting
 

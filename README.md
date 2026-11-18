@@ -68,6 +68,15 @@ drite vps create --data-file .\create-vps.json
 drite ticket create --data-file .\ticket.json
 ```
 
+For a Linux VPS with SSH readiness support, wait for guest setup or open a session with your local SSH client.
+
+```sh
+drite vps wait VPS_ID
+drite vps ssh VPS_ID -i ~/.ssh/id_ed25519
+```
+
+SSH readiness confirms that the guest has configured SSH. Network access and login credentials are checked when you connect.
+
 Upload a ticket attachment, then put the returned `key` into the ticket body:
 
 ```powershell
