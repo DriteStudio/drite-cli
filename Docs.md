@@ -107,6 +107,9 @@ if errors.As(err, &apiErr) {
 | `POST /api/auth/me/step-up/passkey/verify` | `Account.FinishPasskeyStepUp` | `account passkey-step-up-verify` |
 | `PUT /api/auth/me/api-key/security` | `Account.SetAPIKeySecurity` | `account api-key-security` |
 | `GET /api/auth/me/api-logs` | `Account.APILogs` | `account api-logs` |
+| `GET /api/auth/me/ssh-keys` | `Account.ListSSHKeys` | `ssh-key list` |
+| `POST /api/auth/me/ssh-keys` | `Account.AddSSHKey` | `ssh-key add` |
+| `DELETE /api/auth/me/ssh-keys/{id}` | `Account.DeleteSSHKey` | `ssh-key delete` |
 | `GET /api/auth/me/webhook-events` | `Account.WebhookEvents` | `account webhook-events` |
 | `GET /api/auth/me/webhooks` | `Account.Webhooks` | `account webhooks` |
 | `POST /api/auth/me/webhooks` | `Account.CreateWebhook` | `account create-webhook` |
@@ -191,11 +194,28 @@ drite vps create --data-file .\create-vps.json
 หากละฟิลด์นี้ VPS Linux ใช้ค่าเริ่มต้นของเทมเพลต เช่น `dritestudio`
 ชื่อที่เลือกใช้ต่อเมื่อ reinstall บนเทมเพลตที่รองรับ
 
-ส่ง `sshPublicKeys` เป็น array ใน `vps create`, `vps custom-create` หรือ
-`vps reinstall` สำหรับเทมเพลตที่รองรับ ตอน reinstall ให้ละฟิลด์นี้เพื่อเก็บ
-keys เดิม หรือส่ง `[]` เพื่อล้าง keys ที่ระบบจัดการ
+ใช้ SSH public key ที่บันทึกในบัญชีตอนเช่าหรือ reinstall VPS บนเทมเพลตที่มี
+ฟีเจอร์ `ssh-keys`
 
-`vps ssh-keys VPS_ID --data '{"keys":[]}'` ล้าง keys ที่ระบบจัดการ
+```bash
+drite ssh-key add --name Laptop --file ~/.ssh/id_ed25519.pub
+drite ssh-key list
+drite vps create --data-file create-vps.json --ssh-key Laptop
+drite ssh-key delete KEY_ID
+```
+
+`--ssh-key` รับชื่อหรือ ID และใช้ซ้ำได้ รองรับทั้ง `vps create`,
+`vps custom-create`, `vps reinstall`, `reseller vps create` และ
+`reseller vps custom-create` ใช้ `sshKeyIds` ใน JSON เพื่อระบุ ID โดยตรง
+และใช้ `sshPublicKeys` เพื่อส่ง public key ของเครื่องนั้น ทั้งสองฟิลด์ใช้ร่วมกันได้
+
+การลบ key จากบัญชีจะลบออกจากรายการให้เลือกในอนาคต VPS ที่ใช้ key นั้นยังคงมี
+สำเนาของตัวเอง ตอน reinstall ให้ละทั้งสองฟิลด์เพื่อเก็บ keys เดิม หรือส่ง
+`{"sshKeyIds":[]}` หรือ `{"sshPublicKeys":[]}` เป็นส่วนหนึ่งของ request
+เพื่อล้าง keys ที่ระบบจัดการ
+
+`vps ssh-keys VPS_ID --ssh-key Laptop` ใช้ key ที่เลือกแทนชุดที่ VPS จัดการอยู่
+`vps ssh-keys VPS_ID --data '{"keys":[]}'` ล้างชุด keys ที่ระบบจัดการ
 ตรวจ `rebootRequired` หลังเปลี่ยน SSH keys หรือ IPv6
 
 หากผลลัพธ์เป็น `202` พร้อม `jobId` ให้ใช้ `VPS.Job` หรือ
@@ -318,7 +338,8 @@ drite ticket upload .\debug.log
 ใช้ `planId` จาก `reseller vps plans` เมื่อต้องการสั่งซื้อจาก offer ของบัญชี
 
 สำหรับ VPS ที่ยังเป็นของบัญชี reseller ให้ใช้ `vps job` หรือ `vps status`
-เพื่อติดตามงาน ตั้ง SSH keys หลัง provisioning ด้วย `vps ssh-keys` เมื่อ image รองรับ
+เพื่อติดตามงาน เลือก SSH keys ตอนสั่งซื้อ หรือเปลี่ยนภายหลังด้วย `vps ssh-keys`
+เมื่อ image รองรับ
 ใช้ `hosting plans --account` เพื่อดูราคาโฮสติ้งและส่วนลด reseller ตามสิทธิ์
 
 ## Public API

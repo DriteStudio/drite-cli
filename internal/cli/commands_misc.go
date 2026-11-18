@@ -43,9 +43,9 @@ func runReseller(
 		}
 		return client.Reseller.VPS(ctx, id)
 	case "vps-create":
-		body, err := bodyFromArgs[drite.CreateVPSRequest]("reseller VPS create", rest, true)
-		if err != nil {
-			return nil, err
+		var body drite.CreateVPSRequest
+		if response, err := vpsBodyWithSSHKeys(ctx, client.Account, "reseller VPS create", rest, true, &body, &body.SSHKeyIDs); err != nil {
+			return response, err
 		}
 		return client.Reseller.CreateVPS(ctx, body)
 	case "custom-quote":
@@ -55,9 +55,9 @@ func runReseller(
 		}
 		return client.Reseller.QuoteCustomVPS(ctx, body)
 	case "custom-create":
-		body, err := bodyFromArgs[drite.CreateCustomVPSRequest]("reseller custom create", rest, true)
-		if err != nil {
-			return nil, err
+		var body drite.CreateCustomVPSRequest
+		if response, err := vpsBodyWithSSHKeys(ctx, client.Account, "reseller custom create", rest, true, &body, &body.SSHKeyIDs); err != nil {
+			return response, err
 		}
 		return client.Reseller.CreateCustomVPS(ctx, body)
 	default:

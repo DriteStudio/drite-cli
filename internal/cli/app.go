@@ -271,6 +271,8 @@ func (app *App) execute(
 		return client.Account.Profile(ctx)
 	case "account":
 		return runAccount(ctx, client, rest)
+	case "ssh-key":
+		return runSSHKey(ctx, client.Account, rest)
 	case "vps":
 		return runVPS(ctx, client, rest)
 	case "hosting":
@@ -333,7 +335,7 @@ Global flags:
   --timeout 30s            request timeout
 
 Commands:
-  auth, config, me, account, vps, hosting, billing, ticket
+  auth, config, me, account, ssh-key, vps, hosting, billing, ticket
   reseller, public, request, version
 
 Mutation commands accept --data JSON or --data-file PATH.

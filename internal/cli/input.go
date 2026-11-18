@@ -49,14 +49,19 @@ func (data *dataFlags) bytes(required bool) ([]byte, error) {
 
 func decodeData[T any](data *dataFlags, required bool) (T, error) {
 	var value T
+	err := decodeDataInto(data, required, &value)
+	return value, err
+}
+
+func decodeDataInto(data *dataFlags, required bool, target any) error {
 	content, err := data.bytes(required)
 	if err != nil {
-		return value, err
+		return err
 	}
-	if err := json.Unmarshal(content, &value); err != nil {
-		return value, fmt.Errorf("decode JSON request body: %w", err)
+	if err := json.Unmarshal(content, target); err != nil {
+		return fmt.Errorf("decode JSON request body: %w", err)
 	}
-	return value, nil
+	return nil
 }
 
 func decodeUntypedData(data *dataFlags, required bool) (any, error) {
@@ -66,15 +71,21 @@ func decodeUntypedData(data *dataFlags, required bool) (any, error) {
 func bodyFromArgs[T any](name string, arguments []string, required bool) (T, error) {
 	flags := newFlagSet(name)
 	data := addDataFlags(flags)
-	if err := flags.Parse(arguments); err != nil {
+	if err := parseBodyFlags(flags, arguments); err != nil {
 		var zero T
 		return zero, err
 	}
-	if flags.NArg() != 0 {
-		var zero T
-		return zero, fmt.Errorf("unexpected argument %q", flags.Arg(0))
-	}
 	return decodeData[T](data, required)
+}
+
+func parseBodyFlags(flags *flag.FlagSet, arguments []string) error {
+	if err := flags.Parse(arguments); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 {
+		return fmt.Errorf("unexpected argument %q", flags.Arg(0))
+	}
+	return nil
 }
 
 func parseRequiredBool(value string, flagName string) (bool, error) {

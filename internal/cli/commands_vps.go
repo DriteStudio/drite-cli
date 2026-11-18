@@ -61,9 +61,9 @@ func runVPS(
 		}
 		return client.VPS.AcknowledgeFailed(ctx, id)
 	case "create":
-		body, err := bodyFromArgs[drite.CreateVPSRequest]("vps create", rest, true)
-		if err != nil {
-			return nil, err
+		var body drite.CreateVPSRequest
+		if response, err := vpsBodyWithSSHKeys(ctx, client.Account, "vps create", rest, true, &body, &body.SSHKeyIDs); err != nil {
+			return response, err
 		}
 		return client.VPS.Create(ctx, body)
 	case "custom-quote":
@@ -73,9 +73,9 @@ func runVPS(
 		}
 		return client.VPS.QuoteCustom(ctx, body)
 	case "custom-create":
-		body, err := bodyFromArgs[drite.CreateCustomVPSRequest]("vps custom create", rest, true)
-		if err != nil {
-			return nil, err
+		var body drite.CreateCustomVPSRequest
+		if response, err := vpsBodyWithSSHKeys(ctx, client.Account, "vps custom create", rest, true, &body, &body.SSHKeyIDs); err != nil {
+			return response, err
 		}
 		return client.VPS.CreateCustom(ctx, body)
 	}
@@ -118,9 +118,9 @@ func runVPS(
 	case "ipv6-release":
 		return client.VPS.ReleaseIPv6(ctx, id)
 	case "ssh-keys":
-		body, err := bodyFromArgs[drite.SetSSHPublicKeysRequest]("vps ssh-keys", bodyArgs, true)
-		if err != nil {
-			return nil, err
+		var body drite.SetSSHPublicKeysRequest
+		if response, err := vpsBodyWithSSHKeys(ctx, client.Account, "vps ssh-keys", bodyArgs, false, &body, &body.SSHKeyIDs); err != nil {
+			return response, err
 		}
 		return client.VPS.SetSSHPublicKeys(ctx, id, body)
 	case "renew":
@@ -153,9 +153,9 @@ func runVPS(
 		}
 		return client.VPS.Rename(ctx, id, body)
 	case "reinstall":
-		body, err := bodyFromArgs[drite.ReinstallVPSRequest]("vps reinstall", bodyArgs, true)
-		if err != nil {
-			return nil, err
+		var body drite.ReinstallVPSRequest
+		if response, err := vpsBodyWithSSHKeys(ctx, client.Account, "vps reinstall", bodyArgs, true, &body, &body.SSHKeyIDs); err != nil {
+			return response, err
 		}
 		return client.VPS.Reinstall(ctx, id, body)
 	case "reset-password":

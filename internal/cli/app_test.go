@@ -300,9 +300,12 @@ func TestCurrentBackendRequests(t *testing.T) {
 			"POST", customerVPS + "/custom", `{"templateId":"","durationType":"","cpu":0,"ram":0,"disk":0,"name":"vm","password":"","sshPublicKeys":["ssh-key"],"loginUsername":"deploy_user"}`},
 		{"reinstall keeps keys", []string{"vps", "reinstall", "vm", "--data", `{"templateId":"image","password":"fixture"}`},
 			"POST", customerVPS + "/vm/reinstall", `{"templateId":"image","password":"fixture"}`},
+		{"reinstall clears saved keys with an explicit empty list", []string{"vps", "reinstall", "vm", "--data", `{"templateId":"image","password":"fixture","sshKeyIds":[]}`},
+			"POST", customerVPS + "/vm/reinstall", `{"templateId":"image","password":"fixture","sshKeyIds":[]}`},
 		{"reinstall clears keys", []string{"vps", "reinstall", "vm", "--data", `{"templateId":"image","password":"fixture","sshPublicKeys":[]}`},
 			"POST", customerVPS + "/vm/reinstall", `{"templateId":"image","password":"fixture","sshPublicKeys":[]}`},
 		{"replace SSH keys", []string{"vps", "ssh-keys", "vm", "--data", `{"keys":[]}`}, "PUT", customerVPS + "/vm/ssh-keys", `{"keys":[]}`},
+		{"replace with saved SSH key IDs", []string{"vps", "ssh-keys", "vm", "--data", `{"sshKeyIds":["key-id"]}`}, "PUT", customerVPS + "/vm/ssh-keys", `{"sshKeyIds":["key-id"]}`},
 		{"request IPv6", []string{"vps", "ipv6-request", "vm"}, "POST", customerVPS + "/vm/ipv6", ""},
 		{"release IPv6", []string{"vps", "ipv6-release", "vm"}, "DELETE", customerVPS + "/vm/ipv6", ""},
 		{"rollback snapshot", []string{"vps", "snapshot-rollback", "vm /1", "snapshot /1"},
@@ -312,6 +315,8 @@ func TestCurrentBackendRequests(t *testing.T) {
 		{"reseller templates", []string{"reseller", "vps", "templates"}, "GET", resellerVPS + "/templates", ""},
 		{"reseller list", []string{"reseller", "vps", "list"}, "GET", resellerVPS, ""},
 		{"reseller detail", []string{"reseller", "vps", "get", "vm"}, "GET", resellerVPS + "/vm", ""},
+		{"reseller inline SSH key", []string{"reseller", "vps", "create", "--data", `{"name":"vm","sshPublicKeys":["ssh-key"]}`},
+			"POST", resellerVPS, `{"name":"vm","templateId":"","planId":"","durationType":"","password":"","sshPublicKeys":["ssh-key"]}`},
 		{"reseller create", []string{"reseller", "vps", "create", "--data", `{"name":"vm","templateId":"image","planId":"offer","durationType":"monthly","password":"fixture","loginUsername":"deploy_user"}`},
 			"POST", resellerVPS, `{"name":"vm","templateId":"image","planId":"offer","durationType":"monthly","password":"fixture","loginUsername":"deploy_user"}`},
 		{"reseller custom quote", []string{"reseller", "vps", "custom-quote", "--data", `{"cpu":2,"ram":4,"disk":20,"durationType":"monthly"}`},
@@ -382,26 +387,6 @@ func TestCurrentBackendRequests(t *testing.T) {
 			}
 			if got := strings.TrimSpace(stdout.String()); got != `{"data":{"newBackendField":true}}` {
 				t.Errorf("stdout = %q", got)
-			}
-		})
-	}
-}
-
-func TestResellerOrdersRejectUnsupportedSSHKeys(t *testing.T) {
-	setConfigHome(t)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("unsupported SSH keys reached %s", r.URL.Path)
-		w.WriteHeader(http.StatusBadRequest)
-	}))
-	defer server.Close()
-
-	for _, action := range []string{"create", "custom-create"} {
-		t.Run(action, func(t *testing.T) {
-			var stderr bytes.Buffer
-			app := NewApp(strings.NewReader(""), io.Discard, &stderr)
-			args := []string{"--base-url", server.URL, "--token", "dr_live_fixture", "reseller", "vps", action, "--data", `{"sshPublicKeys":["ssh-key"]}`}
-			if code := app.Run(context.Background(), args); code != 1 || !strings.Contains(stderr.String(), "reseller VPS orders do not accept sshPublicKeys") {
-				t.Fatalf("exit = %d, stderr = %q", code, stderr.String())
 			}
 		})
 	}

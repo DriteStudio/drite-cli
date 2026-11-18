@@ -101,6 +101,9 @@ HTTP status ที่ควรรองรับ:
 | `GET` | `/api/auth/me/api-logs` | API log ล่าสุดและสถิติ 24 ชั่วโมง |
 | `POST` | `/api/auth/me/step-up/passkey/options` | เริ่มยืนยันตัวตนด้วย Passkey |
 | `POST` | `/api/auth/me/step-up/passkey/verify` | ส่ง `flowId` และ WebAuthn `response` เพื่อขอ `stepUpProof` |
+| `GET` | `/api/auth/me/ssh-keys` | รายการ SSH public keys ในบัญชี |
+| `POST` | `/api/auth/me/ssh-keys` | บันทึก key โดยส่ง `name` และ `publicKey` |
+| `DELETE` | `/api/auth/me/ssh-keys/{keyId}` | ลบ key จากบัญชี ตอบ `204` |
 | `GET` | `/api/auth/me/webhook-events` | รายการ event ที่รองรับ |
 | `GET` | `/api/auth/me/webhooks` | รายการ Webhook |
 | `POST` | `/api/auth/me/webhooks` | สร้าง Webhook |
@@ -152,6 +155,11 @@ curl -X PUT "https://dritestudio.co.th/api/auth/me/api-key/security" \
 
 Webhook รับ `type` เป็น `generic` หรือ `discord` ค่าเริ่มต้นคือ `generic`
 เรียก `GET /api/auth/me/webhook-events` เพื่อดูรายการ event ปัจจุบัน
+
+รายการ SSH public keys คืน `{data: [...]}` การบันทึก key ตอบ `201`
+พร้อม `{data: {...}}` แต่ละรายการมี `id`, `name`, `publicKey`,
+`fingerprint` และ `createdAt` ส่ง public key แบบ OpenSSH หนึ่งบรรทัดจากไฟล์
+`.pub` ชื่อซ้ำหรือ public key ซ้ำในบัญชีเดียวกันตอบ `409`
 
 ## VPS
 
@@ -236,7 +244,7 @@ Create body ใช้ field เดียวกับ Quote และเพิ่
 | `POST` | `/api/auth/vps/{vpsId}/snapshots/{snapshotId}/rollback` | ไม่ต้องมี body |
 | `POST` | `/api/auth/vps/{vpsId}/ipv6` | ไม่ต้องมี body |
 | `DELETE` | `/api/auth/vps/{vpsId}/ipv6` | ไม่ต้องมี body |
-| `PUT` | `/api/auth/vps/{vpsId}/ssh-keys` | `{"keys":[]}` เพื่อล้าง keys ที่ระบบจัดการ |
+| `PUT` | `/api/auth/vps/{vpsId}/ssh-keys` | ระบุ `sshKeyIds` หรือ `keys` เพื่อแทนชุดที่ระบบจัดการ ส่ง `{"keys":[]}` เพื่อล้างชุด |
 | `DELETE` | `/api/auth/vps/{vpsId}` | - |
 
 คำขอสร้าง VPS แบบแพ็กเกจหรือ Custom ทั้ง Customer และ Reseller รับ `loginUsername`
@@ -244,9 +252,15 @@ Create body ใช้ field เดียวกับ Quote และเพิ่
 ตัวอย่างค่า `deploy_user` การอ่าน VPS detail จะคืนชื่อที่ตั้งไว้ใน `loginUsername`
 ดูรูปแบบชื่อและตัวอย่างคำสั่งใน [คู่มือ CLI](../Docs.md#vps-api)
 
-Customer VPS รับ `sshPublicKeys` ใน request สร้างและ reinstall
-ตอน reinstall การละฟิลด์นี้จะเก็บ keys เดิม ส่วน `[]` จะล้าง keys ที่ระบบจัดการ
-SSH keys และ IPv6 ใช้ได้ตามฟีเจอร์ของ image ให้ตรวจ `rebootRequired` ในผลลัพธ์
+คำขอสร้าง Customer VPS และ Reseller VPS ทั้งแบบแพ็กเกจและ Custom รวมถึงการ
+reinstall รับ `sshKeyIds` สำหรับ ID จากคลังของบัญชี และ `sshPublicKeys`
+สำหรับ public keys ที่ส่งตรง เมื่อใช้ทั้งสองฟิลด์ API จะรวมและตัด keys ซ้ำ
+เลือก image ที่มีฟีเจอร์ `ssh-keys`
+
+API คัดลอก public keys ลง VPS ตอนสั่งซื้อหรือ reinstall การลบ key จากบัญชี
+ไม่มีผลกับ VPS ที่ใช้ key นั้นอยู่ ตอน reinstall หากละทั้งสองฟิลด์ ระบบเก็บ
+keys เดิม ส่ง array ว่างในฟิลด์ใดฟิลด์หนึ่งโดยไม่มี keys อื่นเพื่อล้าง keys
+ที่ระบบจัดการ ตรวจ `rebootRequired` หลังเปลี่ยน SSH keys หรือ IPv6
 
 `control.action` รองรับ `start`, `stop`, `reboot`, `force-stop`
 
@@ -455,9 +469,8 @@ curl -X POST "https://dritestudio.co.th/api/auth/ticket/upload-url" \
 | `POST` | `/api/reseller/vps/custom` |
 
 ใช้ `planId` จาก `GET /api/reseller/vps/plans` เมื่อต้องการสั่ง VPS ตาม offer
-ราคาและข้อจำกัดของ order มาจากบัญชี reseller การส่ง `sshPublicKeys` ใช้กับ
-Customer VPS endpoint ตามที่ระบุในส่วน VPS หากสั่งผ่าน Reseller API ให้เพิ่ม
-keys หลัง provision บน VPS และ image ที่รองรับ
+ราคาและข้อจำกัดของ order มาจากบัญชี reseller ส่ง `sshKeyIds` หรือ
+`sshPublicKeys` เพื่อเลือก keys ตอนสั่ง VPS ตามรายละเอียดในส่วน VPS
 
 ใช้ `GET /api/auth/hosting/plans` เพื่อดูราคาโฮสติ้งของบัญชีและค่า
 `resellerDiscount` ตามสิทธิ์

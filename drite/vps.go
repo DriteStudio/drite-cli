@@ -2,6 +2,7 @@ package drite
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -43,6 +44,7 @@ type CreateVPSRequest struct {
 	IP            string       `json:"ip,omitempty"`
 	NetworkRef    string       `json:"networkRef,omitempty"`
 	SSHPublicKeys []string     `json:"sshPublicKeys,omitempty"`
+	SSHKeyIDs     *[]string    `json:"sshKeyIds,omitempty"`
 	LoginUsername string       `json:"loginUsername,omitempty"`
 }
 
@@ -63,6 +65,7 @@ type CreateCustomVPSRequest struct {
 	Name          string       `json:"name"`
 	Password      string       `json:"password"`
 	SSHPublicKeys []string     `json:"sshPublicKeys,omitempty"`
+	SSHKeyIDs     *[]string    `json:"sshKeyIds,omitempty"`
 	LoginUsername string       `json:"loginUsername,omitempty"`
 }
 
@@ -85,12 +88,25 @@ type RenameVPSRequest struct {
 type ReinstallVPSRequest struct {
 	TemplateID string `json:"templateId"`
 	Password   string `json:"password"`
-	// Omit to keep existing keys. An explicit empty slice clears them.
+	// Omit both fields to keep existing keys. An explicit empty list clears the managed keys.
 	SSHPublicKeys *[]string `json:"sshPublicKeys,omitempty"`
+	SSHKeyIDs     *[]string `json:"sshKeyIds,omitempty"`
 }
 
 type SetSSHPublicKeysRequest struct {
-	Keys []string `json:"keys"`
+	Keys      []string  `json:"keys"`
+	SSHKeyIDs *[]string `json:"sshKeyIds,omitempty"`
+}
+
+func (r SetSSHPublicKeysRequest) MarshalJSON() ([]byte, error) {
+	var keys *[]string
+	if r.Keys != nil {
+		keys = &r.Keys
+	}
+	return json.Marshal(struct {
+		Keys      *[]string `json:"keys,omitempty"`
+		SSHKeyIDs *[]string `json:"sshKeyIds,omitempty"`
+	}{Keys: keys, SSHKeyIDs: r.SSHKeyIDs})
 }
 
 type ResetPasswordRequest struct {
@@ -289,8 +305,8 @@ func (s *VPSService) SetSSHPublicKeys(ctx context.Context, vpsID string, request
 	if err != nil {
 		return nil, err
 	}
-	if request.Keys == nil {
-		return nil, fmt.Errorf("drite: keys must be an array; use [] to clear managed SSH keys")
+	if request.Keys == nil && request.SSHKeyIDs == nil {
+		return nil, fmt.Errorf("drite: specify keys or sshKeyIds; use [] to clear managed SSH keys")
 	}
 	return s.client.Request(ctx, http.MethodPut, path+"/ssh-keys", nil, request)
 }
